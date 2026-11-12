@@ -34,7 +34,7 @@ Forever RPG는 RPG 게임의 캐릭터, 아이템, 몬스터, 인벤토리 및 �
 SQL Server에서 생성한 7개 테이블과
 6개 외래키 관계를 시각화했습니다.
 
-![Forever RPG ERD](screenshots/day01_erd.png)
+![Forever RPG ERD](screenshots/erd.png)
 
 
 ## 3. 시스템 아키텍처
