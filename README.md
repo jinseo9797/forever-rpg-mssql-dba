@@ -79,6 +79,29 @@ CHECK 제약조건으로 음수 골드 및 잘못된 수량 입력을 제한하�
 
 SchemaVersions 테이블과 버전별 SQL 스크립트를 활용하여 데이터베이스 변경 이력을 관리합니다. 향후 Stored Procedure 수정과 DB 패치에도 버전 관리를 적용할 계획입니다.
 
+
+### 4.4 스키마 검증 결과
+
+SQL Server 시스템 카탈로그를 조회하여
+테이블 및 제약조건 구성을 확인했습니다.
+
+| 검증 항목 | 결과 |
+|---|---:|
+| Tables | 7 |
+| Foreign Keys | 6 |
+| CHECK Constraints | 11 |
+| UNIQUE Constraints | 3 |
+
+![스키마 검증 결과](../screenshots/day01_schema_validation.png)
+
+### 4.5 제약조건 테스트
+
+유효하지 않은 데이터를 입력하여
+CHECK 제약조건이 정상적으로 작동하는지 확인했습니다.
+
+![제약조건 검증 결과](../screenshots/day01_constraint_test.png)
+
+
 ## 5. 실행 환경 및 초기 설정
 
 ### 개발 환경
