@@ -28,6 +28,15 @@ Forever RPG는 RPG 게임의 캐릭터, 아이템, 몬스터, 인벤토리 및 �
 | Frontend | HTML, CSS, JavaScript (예정) |
 | Version Control | Git, GitHub |
 
+
+### ERD
+
+SQL Server에서 생성한 7개 테이블과
+6개 외래키 관계를 시각화했습니다.
+
+![Forever RPG ERD](../screenshots/day01_erd.png)
+
+
 ## 3. 시스템 아키텍처
 
 향후 구현할 웹 애플리케이션의 구조입니다.
