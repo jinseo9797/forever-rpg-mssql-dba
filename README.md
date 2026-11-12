@@ -34,7 +34,7 @@ Forever RPG는 RPG 게임의 캐릭터, 아이템, 몬스터, 인벤토리 및 �
 SQL Server에서 생성한 7개 테이블과
 6개 외래키 관계를 시각화했습니다.
 
-![Forever RPG ERD](../screenshots/day01_erd.png)
+![Forever RPG ERD](screenshots/day01_erd.png)
 
 
 ## 3. 시스템 아키텍처
@@ -101,14 +101,14 @@ SQL Server 시스템 카탈로그를 조회하여
 | CHECK Constraints | 11 |
 | UNIQUE Constraints | 3 |
 
-![스키마 검증 결과](../screenshots/day01_schema_validation.png)
+![스키마 검증 결과](screenshots/day01_schema_validation.png)
 
 ### 4.5 제약조건 테스트
 
 유효하지 않은 데이터를 입력하여
 CHECK 제약조건이 정상적으로 작동하는지 확인했습니다.
 
-![제약조건 검증 결과](../screenshots/day01_constraint_test.png)
+![제약조건 검증 결과](screenshots/day01_constraint_test.png)
 
 
 ## 5. 실행 환경 및 초기 설정
