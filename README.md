@@ -30,6 +30,8 @@ Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고
 
 향후 연동 예정: Python(FastAPI), HTML, CSS, JavaScript
 
+실습 상세 내용과 SQL 실행 근거는 각 일차별 보고서 및 테스트 파일에서 확인할 수 있습니다.
+
 성능 확인: `SET STATISTICS IO`, `SET STATISTICS TIME`, 실제 실행 계획  
 동시성 제어: `UPDLOCK`, `HOLDLOCK`, `TRY/CATCH`, `XACT_STATE()`
 
