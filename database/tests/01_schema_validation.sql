@@ -1,8 +1,8 @@
 
 /*
-    Project  : Forever RPG
-    Database : ForeverRPG
-    Purpose  : Day 1 Schema Validation
+    프로젝트: Forever RPG
+    데이터베이스: ForeverRPG
+    목적: 1일 차 스키마 검증
 */
 
 USE ForeverRPG;
