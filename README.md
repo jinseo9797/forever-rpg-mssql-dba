@@ -1,219 +1,106 @@
-# Forever RPG
-### Microsoft SQL Server 기반 RPG 데이터베이스 설계 및 운영 프로젝트
+# Forever RPG — SQL Server DBA 실습
 
-Forever RPG는 RPG 게임의 캐릭터, 아이템, 몬스터, 인벤토리 및 게임 활동 기록을 관리하는 **Microsoft SQL Server 기반 데이터베이스 프로젝트**입니다.
+> **게임 데이터베이스 설계·구매 트랜잭션 검증·인덱스 성능 분석·운영 실습**
 
-게임 서비스에서 발생하는 데이터의 생성·변경·조회 과정을 구현하고, 데이터 정합성 검증부터 Stored Procedure, 트랜잭션 처리, 성능 최적화, 데이터베이스 패치 및 복구까지 단계적으로 실습하는 것을 목표로 합니다.
+Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고 구매 처리의 정합성과 사냥 기록 조회 성능을 검증하는 개인 DBA 실습 프로젝트입니다. 테스트에는 가상 게임 데이터를 사용했습니다.
 
-프론트엔드와 백엔드는 AI를 활용하여 구현하며, SQL Server 기반 데이터베이스의 검증·운영·최적화 과정에 집중합니다.
+## 주요 결과
 
----
-
-## 1. 프로젝트 목표
-
-- **데이터베이스 설계:** RPG 게임 데이터를 관계형 테이블로 구성하고 PK, FK, UNIQUE, CHECK 제약조건을 활용한 데이터 무결성 확보
-- **Stored Procedure:** T-SQL을 활용한 캐릭터 생성, 아이템 구매 및 사냥 보상 처리
-- **트랜잭션:** 골드 차감과 아이템 지급 과정에서 발생할 수 있는 데이터 불일치 방지
-- **성능 최적화:** 실행 계획과 STATISTICS IO를 활용한 인덱스 적용 전후 성능 비교
-- **DB 운영:** SQL 스크립트 버전 관리, 패치 검수, 백업 및 복원 실습
-
-## 2. 기술 스택
-
-| 구분 | 기술 |
+| 항목 | 실습 결과 |
 |---|---|
-| Database | Microsoft SQL Server |
-| SQL | T-SQL |
-| DB Management | SQL Server Management Studio (SSMS) |
-| Backend | Python, FastAPI (예정) |
-| Frontend | HTML, CSS, JavaScript (예정) |
-| Version Control | Git, GitHub |
+| 데이터베이스 설계 | 7개 테이블, 외래키 6개, CHECK 11개, UNIQUE 3개 |
+| 구매 처리 | 저장 프로시저 3개 구현, 정상·실패 구매 검증 |
+| 트랜잭션 | 골드 차감 후 강제 오류와 ROLLBACK 확인 |
+| 인덱스 성능 | 최근 사냥 기록 20건 조회 시 논리적 읽기 449 → 3 (약 99.33% 감소) |
+| 실행 계획 | 인덱스 힌트 없는 조회에서 Index Seek 확인 |
 
+> 성능 수치는 로컬 실습에서 얻은 결과입니다. 449와 3은 각각 강제 스캔과 복합 인덱스를 사용한 5회 측정의 평균이며, 실제 서비스 환경의 개선율을 의미하지 않습니다.
 
-### ERD
+## 상세 실습 보고서
 
-SQL Server에서 생성한 7개 테이블과
-6개 외래키 관계를 시각화했습니다.
+| 보고서 | 주요 내용 |
+|---|---|
+| [01. 데이터베이스 설계 및 제약조건 검증](docs/day01_database_design.md) | 테이블 관계, 제약조건, 초기 스키마 |
+| [02. 저장 프로시저 및 트랜잭션 검증](docs/day02_transaction_test.md) | 구매 처리, 오류 발생, ROLLBACK |
+| [03. 인덱스 및 쿼리 성능 분석](docs/day03_index_optimization.md) | 사냥 기록 약 10만 건, 실행 계획, 5회 측정 |
 
-![Forever RPG ERD](screenshots/erd.png)
+## 사용 기술
 
+**Microsoft SQL Server · SSMS · T-SQL · Git · GitHub**
 
-## 3. 시스템 아키텍처
+향후 연동 예정: Python(FastAPI), HTML, CSS, JavaScript
 
-향후 구현할 웹 애플리케이션의 구조입니다.
+성능 확인: `SET STATISTICS IO`, `SET STATISTICS TIME`, 실제 실행 계획  
+동시성 제어: `UPDLOCK`, `HOLDLOCK`, `TRY/CATCH`, `XACT_STATE()`
+
+## 프로젝트 구성
 
 ```text
-[ RPG Web Client ]
-        |
-        v
-[ FastAPI Backend ]
-        |
-        v
-[ SQL Server / Stored Procedures ]
-        |
-        v
-[ ForeverRPG Database ]
+forever-rpg-mssql-dba/
+├── database/
+│   ├── migrations/             # 최초 데이터베이스 스키마
+│   ├── procedures/             # 캐릭터·아이템 조회 및 구매 처리
+│   └── tests/                  # 스키마·구매 검증 SQL
+├── docs/                       # 일자별 실습 보고서
+├── screenshots/                # 실행 결과 이미지
+└── README.md
 ```
 
-게임에서 발생하는 골드 변경, 아이템 지급 및 구매 이력 저장은 데이터베이스 트랜잭션을 통해 처리할 예정입니다.
+## 데이터베이스 구조
 
-## 4. 데이터베이스 설계
+캐릭터, 아이템, 몬스터를 중심으로 인벤토리와 구매·사냥 이력을 연결했습니다. 별도의 `SchemaVersions` 테이블에서 스키마 변경 버전을 관리할 수 있도록 준비했습니다.
 
-### 주요 테이블
+![데이터베이스 관계도](screenshots/erd.png)
 
-| 테이블 | 역할 |
-|---|---|
-| Characters | 캐릭터 정보, 레벨 및 골드 관리 |
-| Items | 아이템 정보, 가격 및 판매 여부 |
-| Monsters | 몬스터 정보 및 사냥 보상 |
-| Inventory | 캐릭터별 보유 아이템 및 수량 |
-| PurchaseHistory | 아이템 구매 내역과 구매 당시 가격 |
-| HuntHistory | 몬스터 사냥 이력 및 실제 획득 골드 |
-| SchemaVersions | 데이터베이스 패치 및 버전 이력 |
+## 실습 환경 및 실행 순서
 
-### 주요 설계 특징
-
-**1. 참조 무결성**
-
-Inventory, PurchaseHistory, HuntHistory에 Foreign Key를 설정하여 존재하지 않는 캐릭터, 아이템 및 몬스터를 참조하는 데이터 입력을 방지합니다.
-
-**2. 데이터 정합성**
-
-CHECK 제약조건으로 음수 골드 및 잘못된 수량 입력을 제한하고, 구매 총액이 단가와 수량의 곱과 일치하도록 검증합니다.
-
-**3. 이력 데이터 보존**
-
-아이템 가격과 몬스터 보상이 변경되더라도 과거 거래 및 사냥 기록을 유지할 수 있도록 당시의 가격과 실제 지급 보상을 별도 컬럼으로 저장합니다.
-
-**4. 데이터베이스 버전 관리**
-
-SchemaVersions 테이블과 버전별 SQL 스크립트를 활용하여 데이터베이스 변경 이력을 관리합니다. 향후 Stored Procedure 수정과 DB 패치에도 버전 관리를 적용할 계획입니다.
-
-
-### 4.4 스키마 검증 결과
-
-SQL Server 시스템 카탈로그를 조회하여
-테이블 및 제약조건 구성을 확인했습니다.
-
-| 검증 항목 | 결과 |
-|---|---:|
-| Tables | 7 |
-| Foreign Keys | 6 |
-| CHECK Constraints | 11 |
-| UNIQUE Constraints | 3 |
-
-![스키마 검증 결과](screenshots/day01_schema_validation.png)
-
-### 4.5 제약조건 테스트
-
-유효하지 않은 데이터를 입력하여
-CHECK 제약조건이 정상적으로 작동하는지 확인했습니다.
-
-![제약조건 검증 결과](screenshots/day01_constraint_test.png)
-
-
-## 5. 실행 환경 및 초기 설정
-
-### 개발 환경
-
-- Microsoft SQL Server
-- SQL Server Management Studio (SSMS)
-
-### 데이터베이스 생성
-
-SQL Server에 접속한 후 다음 SQL을 실행합니다.
+로컬 SQL Server에 접속하여 **새 데이터베이스**를 준비합니다.
 
 ```sql
 CREATE DATABASE ForeverRPG;
 GO
 ```
 
-데이터베이스 생성이 완료되면 다음 파일을 SSMS에서 실행합니다.
+1. [초기 스키마 생성](database/migrations/V001__init_schema.sql) → [스키마 검증](database/tests/01_schema_validation.sql) 순서로 실행합니다.
+2. [저장 프로시저 폴더](database/procedures/)의 조회 및 구매 프로시저를 생성합니다.
+3. [구매 검증 SQL](database/tests/02_purchase_validation.sql)로 정상 구매·오류·롤백을 확인합니다.
+4. 사냥 기록에 가상 데이터를 추가하고, 복합 인덱스 적용 전후 성능을 비교합니다. 측정 조건과 결과는 [인덱스 분석 보고서](docs/day03_index_optimization.md)에 정리했습니다.
 
-**[V001__init_schema.sql](database/migrations/V001__init_schema.sql)**
+> **주의:** 초기 스키마 파일은 새 DB에서 최초 1회만 실행합니다. 구매 검증 파일은 개발용 테스트 데이터가 준비된 상태에서 실행해야 합니다. 성능 비교에 사용된 강제 인덱스 힌트는 실험 목적이며 운영 쿼리에 권장하는 설정은 아닙니다.
 
-해당 스크립트는 총 7개의 테이블과 초기 스키마 버전 정보(V001)를 생성합니다.
+## 실행 결과 이미지
 
-> **주의:** V001 스크립트는 신규 데이터베이스에서 최초 1회 실행하는 용도입니다. 기존 테이블이 존재하는 데이터베이스에서는 중복 생성 오류가 발생할 수 있습니다.
+### 초기 스키마 및 제약조건 검증
 
-### 스키마 검증
+![스키마 검증 결과](screenshots/day01_schema_validation.png)
 
-초기 스키마 생성 후 다음 검증 SQL을 실행합니다.
+![제약조건 검증 결과](screenshots/day01_constraint_test.png)
 
-**[01_schema_validation.sql](database/tests/01_schema_validation.sql)**
+### 인덱스 성능 분석
 
-이 스크립트는 테이블, 외래키, CHECK 및 UNIQUE 제약조건, 스키마 버전 정보를 조회합니다.
+최근 사냥 기록 조회에서는 강제 스캔과 복합 인덱스 사용을 비교했습니다. **스크린샷은 별도 업로드 후 이 위치에 추가할 예정입니다.**
 
-## 6. 개발 로드맵
+예정 파일명: `day03_before_statistics.png`, `day03_after_statistics.png`, `day03_index_seek.png`
 
-| 단계 | 작업 내용 | 상태 |
+## 진행 현황 및 다음 작업
+
+| 단계 | 내용 | 상태 |
 |---|---|---|
-| Day 1 | 데이터베이스 테이블 설계 및 검증 | 완료 |
-| Day 2 | Stored Procedure 및 트랜잭션 구현 | 예정 |
-| Day 3 | 대량 로그 기반 쿼리 성능 최적화 | 예정 |
-| Day 4 | DB 패치, 버전 관리, 백업 및 복원 | 예정 |
-| Day 5 | 장애 대응 시나리오 및 최종 검증 | 예정 |
+| 1일 차 | 데이터베이스 설계 및 제약조건 검증 | 완료 |
+| 2일 차 | 저장 프로시저 및 트랜잭션 검증 | 완료 |
+| 3일 차 | 가상 사냥 기록 생성 및 인덱스 성능 분석 | 측정 완료 · 이미지 정리 중 |
+| 4일 차 | DB 패치 버전 관리, 백업 및 복원 | 예정 |
+| 5일 차 | 장애 대응 및 최종 문서화 | 예정 |
 
-### Day 1 — Database Schema Design
+## 실습 범위와 한계
 
-게임 데이터 관리를 위한 7개 테이블의 초기 구조를 구현했습니다.
+- 가상 데이터와 로컬 SQL Server를 사용한 개인 실습으로, 실제 라이브 게임 서버 성능을 대표하지 않습니다.
+- 구매 실패 후 데이터 유지와 강제 오류에 따른 롤백은 검증했으나, 동시 요청의 부하·교착 상태·재시도 처리는 추가 검증이 필요합니다.
+- 3일 차 인덱스 실험은 강제 스캔과 인덱스 사용의 비교이며, 인덱스 도입에 따른 쓰기 비용은 아직 측정하지 않았습니다.
+- 패치 적용·백업·복원은 후속 단계로, 완료 항목에 포함하지 않았습니다.
 
-주요 작업은 다음과 같습니다.
+## AI 활용 범위
 
-- Characters, Items, Monsters 기본 데이터 테이블 구성
-- Inventory, PurchaseHistory, HuntHistory 관계 설정
-- 기본키 및 외래키를 통한 참조 무결성 관리
-- UNIQUE, CHECK, DEFAULT를 활용한 데이터 제약조건 구성
-- SchemaVersions를 활용한 초기 DB 버전 관리 구조 마련
-- SQL Server 시스템 카탈로그를 이용한 스키마 검증
+AI는 초기 스키마 및 저장 프로시저 초안, SQL 실습 안내와 문서 정리를 지원했습니다. SQL Server에서 스크립트 실행, 구매 검증, 실행 계획 확인 및 성능 측정은 직접 수행했습니다.
 
-### Day 1 스키마 검증 결과
-
-| 검증 항목 | 결과 |
-|---|---:|
-| 생성 테이블 | 7개 |
-| Foreign Key | 6개 |
-| CHECK 제약조건 | 11개 |
-| UNIQUE 제약조건 | 3개 |
-| 초기 스키마 버전 | V001 |
-
-SQL Server 시스템 카탈로그를 조회하여 테이블 및 제약조건 구성을 확인했습니다.
-
-이는 스키마 구성 검증 결과이며, 실제 트랜잭션 및 동시성 처리는 후속 단계에서 검증할 예정입니다.
-
-**관련 파일**
-
-- [초기 데이터베이스 생성 SQL](database/migrations/V001__init_schema.sql)
-- [스키마 검증 SQL](database/tests/01_schema_validation.sql)
-- [Day 1 데이터베이스 설계 기록](docs/day01_database_design.md)
-
-## 7. 향후 개발 계획
-
-### Day 2 — Stored Procedures & Transactions
-
-아이템 구매 시 골드 차감, 인벤토리 갱신, 구매 기록 저장을 하나의 트랜잭션으로 처리합니다.
-
-트랜잭션 중 오류가 발생하면 ROLLBACK을 통해 데이터 정합성을 보장하는 기능을 구현할 예정입니다.
-
-### Day 3 — Query Performance Optimization
-
-대량의 구매 및 사냥 로그를 생성하고 실행 계획과 논리적 읽기를 비교하여 인덱스 적용 효과를 측정합니다.
-
-### Day 4 — Database Patching & Recovery
-
-데이터베이스 변경 스크립트를 버전별로 관리하고, 변경 사항 검증 및 백업·복원 과정을 실습합니다.
-
-### Day 5 — Troubleshooting
-
-게임 서비스 장애를 가정하여 문제 재현, SQL 분석, 원인 파악, 개선 및 재검증 과정을 기록합니다.
-
----
-
-## 8. AI 활용 및 기여 범위
-
-본 프로젝트는 AI를 개발 보조 도구로 활용합니다.
-
-- **AI 지원:** 초기 데이터베이스 DDL 작성, 프론트엔드 및 백엔드 코드 작성, 문서 구성
-- **직접 수행 완료:** SQL Server 환경에서 테이블 생성, 쿼리 실행 및 스키마 구조 검증
-- **직접 수행 예정:** Stored Procedure 실습, 트랜잭션 테스트, 실행 계획 분석, 인덱스 튜닝, DB 패치 및 복구 검증
-
-최종 분석 결과와 운영 테스트는 직접 수행한 검증 내용을 기준으로 기록합니다.
+**학습 내용:** 게임의 재화 변경을 안전하게 처리하는 방법과 조회 패턴에 맞춘 인덱스 설계·검증 과정을 익혔습니다.
