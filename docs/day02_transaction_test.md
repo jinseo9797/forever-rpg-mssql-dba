@@ -65,4 +65,4 @@
 
 ## 6. 다음 단계
 
-Day 3에서는 대량 테스트 데이터를 생성하고, 실행 계획 및 `SET STATISTICS IO`, `SET STATISTICS TIME`을 이용하여 인덱스 적용 전후 성능을 비교할 예정입니다.
+3일 차에서는 가상 사냥 기록 약 10만 건을 생성하고, 실행 계획 및 `SET STATISTICS IO`, `SET STATISTICS TIME`을 이용해 인덱스 적용 전후 성능을 비교했습니다. 결과는 [3일 차 보고서](day03_index_optimization.md)에 정리했습니다.
