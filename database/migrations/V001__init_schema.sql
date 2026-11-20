@@ -16,6 +16,7 @@
       07. SchemaVersions
 */
 
+-- 신규 데이터베이스에서 최초 1회 실행
 USE ForeverRPG;
 GO
 
