@@ -5,8 +5,8 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
 -- =====================================================
--- Forever RPG - Day 2
--- Stored Procedure 구매 및 트랜잭션 검증
+-- Forever RPG - 2일 차
+-- 구매 프로시저 및 트랜잭션 검증
 --
 -- TC-01: 정상 구매 및 데이터 정합성 검증
 -- TC-02: 골드 부족 오류 검증
