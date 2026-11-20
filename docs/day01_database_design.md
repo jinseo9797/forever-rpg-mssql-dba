@@ -1,4 +1,4 @@
-# Day 1 — Database Schema Design
+# 1일 차 — 데이터베이스 설계 및 스키마 검증
 
 ## 1. 작업 개요
 
@@ -62,7 +62,7 @@ CONSTRAINT UQ_Inventory_Character_Item
 
 예를 들어 캐릭터 1번이 철검 2개를 보유한다면 `(CharacterId=1, ItemId=1, Quantity=2)`로 관리합니다.
 
-같은 캐릭터가 철검을 추가로 획득할 경우 별도의 행을 추가하는 대신 기존 Quantity를 변경하도록 구현할 예정입니다.
+같은 캐릭터가 철검을 추가로 획득할 경우 기존 Quantity를 변경하도록 구현했습니다.
 
 ### 3.2 PurchaseHistory — 구매 당시 가격 보존
 
@@ -89,7 +89,7 @@ CONSTRAINT CK_PurchaseHistory_TotalPrice
 
 이를 위해 HuntHistory에 EarnedGold 컬럼을 별도로 구성했습니다.
 
-이후 Stored Procedure를 통해 골드 지급과 사냥 이력 기록을 하나의 트랜잭션으로 처리할 예정입니다.
+사냥 보상의 골드 지급과 이력 기록을 하나의 트랜잭션으로 처리하는 기능은 향후 과제로 남겨두었습니다.
 
 ### 3.4 데이터 무결성 관리
 
@@ -145,10 +145,10 @@ SQL Server의 시스템 카탈로그를 활용하여 실제 생성된 테이블�
 
 | 검증 항목 | 결과 |
 |---|---:|
-| Tables | 7 |
-| Foreign Keys | 6 |
-| CHECK Constraints | 11 |
-| UNIQUE Constraints | 3 |
+| 테이블 | 7 |
+| 외래키 | 6 |
+| CHECK 제약조건 | 11 |
+| UNIQUE 제약조건 | 3 |
 
 아래 이미지는 SSMS에서 직접 실행한 스키마 검증 결과입니다.
 
@@ -183,31 +183,31 @@ Day 1에서는 테이블 생성, 외래키 관계, 제약조건 구성 및 일�
 
 다만 스키마 검증만으로 실제 게임 재화 처리의 정합성이 보장되는 것은 아닙니다.
 
-골드 차감과 아이템 지급 사이에 오류가 발생하는 상황, 동시 구매 요청, 트랜잭션 실패 및 ROLLBACK 동작은 후속 단계에서 검증할 계획입니다.
+이후 2일 차에서 구매 정상·실패 사례와 강제 오류에 따른 ROLLBACK을 검증했습니다. 동시 요청 시나리오의 정량 검증은 후속 과제로 남겼습니다.
 
-## 5. 개선 및 후속 계획
+## 5. 후속 학습 항목
 
-### Day 2 — Stored Procedure & Transaction
+### 2일 차 — 저장 프로시저와 트랜잭션
 
 - 아이템 구매 Stored Procedure 구현
 - 골드 부족 및 잘못된 구매 요청 처리
 - 골드 차감, 인벤토리 변경, 구매 이력 저장의 원자성 보장
 - TRY/CATCH 및 ROLLBACK 동작 검증
 
-### Day 3 — Query Performance Optimization
+### 3일 차 — 쿼리 성능 분석
 
 - 대량 구매·사냥 기록 생성
 - 인덱스 적용 전후 실행 계획 비교
 - STATISTICS IO를 활용한 논리적 읽기 비교
 - 인덱스 추가에 따른 쓰기 비용 검토
 
-### Day 4 — Database Patching & Recovery
+### 4일 차 — 데이터베이스 패치 및 복구
 
 - Stored Procedure 변경 버전 관리
 - DB 패치 검수
 - 전체 백업 및 복원 실습
 
-## 6. Day 1 작업 결과
+## 6. 1일 차 작업 결과
 
 총 7개 테이블과 6개 외래키 관계를 구성하고, 11개 CHECK 제약조건 및 3개 UNIQUE 제약조건을 적용했습니다.
 
