@@ -1,12 +1,12 @@
 
 /*
-    Project  : Forever RPG
-    Database : ForeverRPG
-    Version  : V001
-    Purpose  : Initial Database Schema
-    DBMS     : Microsoft SQL Server
+    프로젝트: Forever RPG
+    데이터베이스: ForeverRPG
+    버전: V001
+    목적: 초기 데이터베이스 스키마 생성
+    DBMS: Microsoft SQL Server
 
-    Tables:
+    테이블:
       01. Characters
       02. Items
       03. Monsters
@@ -209,7 +209,7 @@ CREATE TABLE dbo.SchemaVersions (
 GO
 
 -- =====================================================
--- 08. Initial Schema Version
+-- 08. 초기 스키마 버전
 -- 초기 스키마 적용 이력 등록
 -- =====================================================
 
