@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from db import db_cursor, rows_as_dict
 
-app = FastAPI(title="Forever RPG API", version="0.3.0")
+app = FastAPI(title="Forever RPG API", version="0.4.0")
 logger = logging.getLogger(__name__)
 
 
@@ -183,28 +183,85 @@ def get_recent_hunts(character_id: int):
         raise HTTPException(status_code=503, detail="사냥 기록 조회 실패")
 
 
-@app.post("/hunt")
-def hunt_monster(request: HuntRequest):
-    # 골드 지급과 이력 기록은 SQL Server 프로시저가 트랜잭션으로 처리
+
+class StartBattleRequest(BaseModel):
+    character_id: int = Field(gt=0)
+    monster_id: int = Field(gt=0)
+
+
+class AttackBattleRequest(BaseModel):
+    character_id: int = Field(gt=0)
+    battle_id: int = Field(gt=0)
+
+
+def battle_error(exc: pyodbc.Error):
+    text = " ".join(str(part) for part in exc.args)
+    errors = {
+        50201: (404, "존재하지 않는 캐릭터입니다."),
+        50202: (400, "사냥할 수 없는 몬스터입니다."),
+        50203: (404, "존재하지 않는 전투입니다."),
+        50204: (409, "이미 종료된 전투입니다."),
+        50105: (409, "보유 골드 최대치를 초과합니다."),
+        50108: (409, "전투 보상을 지급할 수 없습니다."),
+    }
+    for number, (status, detail) in errors.items():
+        if re.search(rf"\\({number}\\)", text):
+            return HTTPException(status_code=status, detail=detail)
+    logger.exception("전투 처리 DB 오류")
+    return HTTPException(status_code=503, detail="전투 처리 중 오류가 발생했습니다.")
+
+
+@app.get("/characters/{character_id}/battle")
+def get_active_battle(character_id: int):
+    if character_id <= 0:
+        raise HTTPException(status_code=400, detail="유효하지 않은 캐릭터 ID")
     try:
         with db_cursor() as cursor:
             cursor.execute(
-                "EXEC dbo.usp_HuntMonster @CharacterId=?, @MonsterId=?",
-                request.character_id,
-                request.monster_id,
+                "SELECT b.BattleId,b.CharacterId,b.MonsterId,m.MonsterName,"
+                "b.PlayerHP,b.MonsterHP,b.TurnCount,b.Status,b.RewardClaimed,m.RewardGold "
+                "FROM dbo.BattleEncounters b JOIN dbo.Monsters m ON m.MonsterId=b.MonsterId "
+                "WHERE b.CharacterId=? AND b.Status='Active'",
+                character_id,
+            )
+            rows = rows_as_dict(cursor)
+            return rows[0] if rows else None
+    except (pyodbc.Error, RuntimeError):
+        logger.exception("전투 조회 실패")
+        raise HTTPException(status_code=503, detail="전투 정보를 조회하지 못했습니다. V003 패치를 확인하세요.")
+
+
+@app.post("/battle/start")
+def start_battle(request: StartBattleRequest):
+    try:
+        with db_cursor() as cursor:
+            cursor.execute(
+                "EXEC dbo.usp_StartBattle @CharacterId=?, @MonsterId=?",
+                request.character_id, request.monster_id,
+            )
+            battle_id = int(rows_as_dict(cursor)[0]["BattleId"])
+        return get_active_battle(request.character_id)
+    except pyodbc.Error as exc:
+        raise battle_error(exc) from exc
+    except RuntimeError:
+        logger.exception("전투 DB 연결 실패")
+        raise HTTPException(status_code=503, detail="DB 연결 실패")
+
+
+@app.post("/battle/attack")
+def attack_battle(request: AttackBattleRequest):
+    try:
+        with db_cursor() as cursor:
+            cursor.execute(
+                "EXEC dbo.usp_AttackBattle @CharacterId=?, @BattleId=?",
+                request.character_id, request.battle_id,
             )
             result = rows_as_dict(cursor)
+        if not result:
+            raise HTTPException(status_code=503, detail="전투 결과가 없습니다.")
+        return result[0]
     except pyodbc.Error as exc:
-        error_text = " ".join(str(part) for part in exc.args)
-        for number, (status, detail) in HUNT_ERRORS.items():
-            if re.search(rf"\({number}\)", error_text):
-                raise HTTPException(status_code=status, detail=detail) from exc
-        logger.exception("사냥 SQL 처리 실패")
-        raise HTTPException(status_code=503, detail="사냥 처리 중 데이터베이스 오류가 발생했습니다.") from exc
+        raise battle_error(exc) from exc
     except RuntimeError:
-        logger.exception("DB 연결 설정 오류")
-        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
-
-    if not result:
-        raise HTTPException(status_code=503, detail="사냥 결과를 반환받지 못했습니다.")
-    return result[0]
+        logger.exception("전투 DB 연결 실패")
+        raise HTTPException(status_code=503, detail="DB 연결 실패")
