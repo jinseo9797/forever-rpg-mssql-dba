@@ -1,9 +1,42 @@
-from fastapi import FastAPI, HTTPException
+import logging
+import re
+
 import pyodbc
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
 from db import db_cursor, rows_as_dict
 
-app = FastAPI(title="Forever RPG API", version="0.1.0")
+app = FastAPI(title="Forever RPG API", version="0.2.0")
+logger = logging.getLogger(__name__)
+
+# 구매 SP에서 명시적으로 발생시키는 비즈니스 오류
+PURCHASE_ERRORS = {
+    50001: (400, "구매 수량은 1 이상이어야 합니다."),
+    50002: (404, "존재하지 않는 캐릭터입니다."),
+    50003: (400, "구매할 수 없는 아이템입니다."),
+    50004: (400, "보유 골드가 부족합니다."),
+    50005: (409, "골드 차감에 실패했습니다."),
+    50006: (409, "인벤토리 수량 변경에 실패했습니다."),
+}
+
+
+class PurchaseRequest(BaseModel):
+    character_id: int = Field(gt=0)
+    item_id: int = Field(gt=0)
+    quantity: int = Field(default=1, gt=0, le=1000)
+
+
+def purchase_error(exc: pyodbc.Error) -> HTTPException:
+    # SQL Server가 전달한 프로시저 THROW 번호만 허용 목록에서 추출
+    detail = "아이템 구매 처리 중 데이터베이스 오류가 발생했습니다."
+    text = " ".join(str(part) for part in exc.args)
+    for number, (status, message) in PURCHASE_ERRORS.items():
+        if re.search(rf"\({number}\)", text):
+            return HTTPException(status_code=status, detail=message)
+
+    logger.exception("구매 SQL 처리 실패")
+    return HTTPException(status_code=503, detail=detail)
 
 
 @app.get("/health")
@@ -13,6 +46,7 @@ def health():
             cursor.execute("SELECT DB_NAME() AS database_name, 1 AS ok")
             return rows_as_dict(cursor)[0]
     except (pyodbc.Error, RuntimeError):
+        logger.exception("DB 연결 확인 실패")
         raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
 
 
@@ -25,6 +59,7 @@ def get_character(character_id: int):
             cursor.execute("EXEC dbo.usp_GetCharacter @CharacterId=?", character_id)
             characters = rows_as_dict(cursor)
     except (pyodbc.Error, RuntimeError):
+        logger.exception("캐릭터 조회 실패")
         raise HTTPException(status_code=503, detail="캐릭터 조회 실패")
     if not characters:
         raise HTTPException(status_code=404, detail="캐릭터가 없습니다")
@@ -41,4 +76,48 @@ def list_items():
             )
             return rows_as_dict(cursor)
     except (pyodbc.Error, RuntimeError):
+        logger.exception("아이템 목록 조회 실패")
         raise HTTPException(status_code=503, detail="아이템 조회 실패")
+
+
+@app.get("/characters/{character_id}/inventory")
+def get_inventory(character_id: int):
+    if character_id <= 0:
+        raise HTTPException(status_code=400, detail="유효하지 않은 캐릭터 ID")
+    try:
+        with db_cursor() as cursor:
+            cursor.execute(
+                "SELECT i.InventoryId, i.CharacterId, i.ItemId, "
+                "t.ItemName, t.ItemType, i.Quantity "
+                "FROM dbo.Inventory AS i "
+                "JOIN dbo.Items AS t ON t.ItemId = i.ItemId "
+                "WHERE i.CharacterId = ? ORDER BY i.ItemId",
+                character_id,
+            )
+            return rows_as_dict(cursor)
+    except (pyodbc.Error, RuntimeError):
+        logger.exception("인벤토리 조회 실패")
+        raise HTTPException(status_code=503, detail="인벤토리 조회 실패")
+
+
+@app.post("/purchase")
+def purchase_item(request: PurchaseRequest):
+    # 게임 서버는 구매 비즈니스 로직을 재구현하지 않고 SP만 호출
+    try:
+        with db_cursor() as cursor:
+            cursor.execute(
+                "EXEC dbo.usp_PurchaseItem @CharacterId=?, @ItemId=?, @Quantity=?",
+                request.character_id,
+                request.item_id,
+                request.quantity,
+            )
+            result = rows_as_dict(cursor)
+    except pyodbc.Error as exc:
+        raise purchase_error(exc) from exc
+    except RuntimeError:
+        logger.exception("DB 연결 설정 오류")
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+
+    if not result:
+        raise HTTPException(status_code=503, detail="구매 결과를 반환받지 못했습니다.")
+    return result[0]
