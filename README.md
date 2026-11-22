@@ -33,8 +33,8 @@ Microsoft SQL Server로 RPG 게임의 데이터를 관리하고, 트랜잭션·�
 | [02. 저장 프로시저 및 트랜잭션 검증](docs/day02_transaction_test.md) | 구매 처리, 오류 발생, ROLLBACK |
 | [03. 인덱스 및 쿼리 성능 분석](docs/day03_index_optimization.md) | 사냥 기록 약 10만 건, 실행 계획, 5회 측정 |
 | [04. DB 패치 및 백업·복원 검증](docs/day04_patch_backup_restore.md) | V002 패치, 복원 이력, 원본·복원본 검증 |
-| [05. Blocking 장애 재현 및 대응](docs/day05_blocking_troubleshooting.md) | 세션 간 잠금 대기, DMV 원인 분석, ROLLBACK 및 해소 검증 |
-| [05. Deadlock 재현 및 XML 분석](docs/day05_deadlock_analysis.md) | 오류 1205, 희생자 선정, PK 키 잠금 순환 대기 검증 |
+| [05-1. Blocking 장애 재현 및 대응](docs/day05_blocking_troubleshooting.md) | 세션 간 잠금 대기, DMV 원인 분석, ROLLBACK 및 해소 검증 |
+| [05-2. Deadlock 재현 및 XML 분석](docs/day05_deadlock_analysis.md) | 오류 1205, 희생자 선정, PK 키 잠금 순환 대기 검증 |
 | [09. 전투 및 중복 보상 검증](docs/day09_battle_validation.md) | 전투 승리, 보상 완료 상태, 재공격 후 데이터 유지 |
 
 ## 사용 기술
@@ -43,7 +43,7 @@ Microsoft SQL Server로 RPG 게임의 데이터를 관리하고, 트랜잭션·�
 
 게임 서버 및 로컬 웹 게임 구현: Python(FastAPI), pyodbc, HTML/CSS/JavaScript. **FastAPI·JavaScript `fetch()` 통신과 웹 화면 구현에는 AI를 활용**했으며, V003 전투 승리 및 순차 재공격 결과는 로컬에서 직접 검증했습니다.
 
-실습 상세 내용과 SQL 실행 근거는 각 일차별 보고서 및 테스트 파일에서 확인할 수 있습니다.
+실습 상세 내용과 SQL 실행 근거는 각 단계별 보고서 및 테스트 파일에서 확인할 수 있습니다.
 
 성능 확인: `SET STATISTICS IO`, `SET STATISTICS TIME`, 실제 실행 계획  
 동시성 제어: `UPDLOCK`, `HOLDLOCK`, `TRY/CATCH`, `XACT_STATE()`
@@ -93,7 +93,7 @@ forever-rpg-mssql-dba/
 │   ├── migrations/             # V001 ~ V003 스키마 패치
 │   ├── procedures/             # 구매 · 전투 · 보상 저장 프로시저
 │   └── tests/                  # 제약조건 · 운영 · 전투 검증 SQL
-├── docs/                       # 일차별 보고서 및 최종 통합 보고서
+├── docs/                       # 단계별 보고서 및 최종 통합 보고서
 ├── screenshots/                # 실행 결과 이미지
 └── README.md
 ```
@@ -120,19 +120,19 @@ GO
 5. [V002 패치 SQL](database/migrations/V002__add_character_last_login.sql)로 스키마 변경 상태를 검증하고, FULL 백업·별도 DB 복원 후 [복원 검증 SQL](database/tests/03_restore_validation.sql)을 실행합니다. 복원 검증에는 원본 DB와 복원 테스트 DB가 모두 필요합니다.
 6. 개발 환경에서 [Blocking 재현 SQL](database/tests/04_blocking_test.sql)을 SSMS의 서로 다른 세션에 나누어 실행하고 [장애 대응 보고서](docs/day05_blocking_troubleshooting.md)의 순서대로 대기 및 해소를 확인합니다.
 7. [Deadlock 재현 SQL](database/tests/05_deadlock_test.sql)을 세션별로 나누어 실행하고 [Deadlock XML 분석 보고서](docs/day05_deadlock_analysis.md)에서 교착 상태와 희생자 선택을 확인합니다.
-8. [V003 패치](database/migrations/V003__add_battle_encounters.sql) 및 [전투 프로시저](database/procedures/)를 적용하고, FastAPI 서버와 웹 게임을 실행해 구매·전투를 검증합니다. 전투 검증 결과는 [9일 차 보고서](docs/day09_battle_validation.md)를 참고하세요.
+8. [V003 패치](database/migrations/V003__add_battle_encounters.sql) 및 [전투 프로시저](database/procedures/)를 적용하고, FastAPI 서버와 웹 게임을 실행해 구매·전투를 검증합니다. 전투 검증 결과는 [09단계 보고서](docs/day09_battle_validation.md)를 참고하세요.
 
 > **주의:** 초기 스키마 파일은 새 DB에서 최초 1회만 실행합니다. 구매 검증 파일은 개발용 테스트 데이터가 준비된 상태에서 실행해야 합니다. 성능 비교에 사용된 강제 인덱스 힌트는 실험 목적이며 운영 쿼리에 권장하는 설정은 아닙니다.
 
 ## 실행 결과 이미지
 
-### 초기 스키마 및 제약조건 검증
+### 01. 초기 스키마 및 제약조건 검증
 
 ![스키마 검증 결과](screenshots/day01_schema_validation.png)
 
 ![제약조건 검증 결과](screenshots/day01_constraint_test.png)
 
-### 인덱스 성능 분석
+### 03. 인덱스 성능 분석
 
 최근 사냥 기록 20건 조회에서 강제 스캔과 복합 인덱스 사용 시 논리적 읽기가 각각 **449회, 3회**로 측정됐습니다.
 
@@ -148,9 +148,9 @@ GO
 
 ![인덱스 탐색 실행 계획 및 속성](screenshots/day03_index_seek.png)
 
-측정 조건과 분석은 [3일 차 보고서](docs/day03_index_optimization.md)를 참고하세요.
+측정 조건과 분석은 [03단계 보고서](docs/day03_index_optimization.md)를 참고하세요.
 
-### 데이터베이스 패치 및 복원 검증
+### 04. 데이터베이스 패치 및 복원 검증
 
 **V002 패치 이력과 컬럼 구조**
 
@@ -168,9 +168,9 @@ GO
 
 ![원본과 복원본의 데이터 건수 비교](screenshots/day04_restore_validation.png)
 
-자세한 내용은 [4일 차 패치·백업·복원 보고서](docs/day04_patch_backup_restore.md)에 정리했습니다.
+자세한 내용은 [04단계 패치·백업·복원 보고서](docs/day04_patch_backup_restore.md)에 정리했습니다.
 
-### Blocking 장애 대응
+### 05-1. Blocking 장애 대응
 
 **잠금 대기 원인 분석 — 세션 92가 세션 78을 대기**
 
@@ -184,9 +184,9 @@ GO
 
 ![Blocking 해소 결과](screenshots/day05_blocking_resolved.png)
 
-실습 절차와 결과는 [5일 차 Blocking 장애 대응 보고서](docs/day05_blocking_troubleshooting.md)에 정리했습니다.
+실습 절차와 결과는 [05단계 Blocking 장애 대응 보고서](docs/day05_blocking_troubleshooting.md)에 정리했습니다.
 
-### Deadlock 교착 상태 분석
+### 05-2. Deadlock 교착 상태 분석
 
 **오류 1205 — 세션 B(SPID 75) 희생자 선정**
 
@@ -202,35 +202,35 @@ GO
 
 Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세션 87과 75가 서로 보유자·대기자로 나타나는 것을 확인했습니다. 개인 환경 식별 정보가 포함된 XML 원본 대신 [분석 보고서](docs/day05_deadlock_analysis.md)에 핵심 결과를 정리했습니다.
 
-### 턴제 전투 및 중복 보상 검증
+### 09. 턴제 전투 및 중복 보상 검증
 
 **전투 승리 — BattleId 1 / Won / RewardClaimed 1**
 
-![Day 9 전투 승리 결과](screenshots/day09_battle_victory.png)
+![09단계 전투 승리 결과](screenshots/day09_battle_victory.png)
 
 **종료된 전투에 대한 재공격 차단**
 
-![Day 9 재공격 오류 결과](screenshots/day09_duplicate_reward_error.png)
+![09단계 재공격 오류 결과](screenshots/day09_duplicate_reward_error.png)
 
 **재공격 이후 골드 및 사냥 기록 유지**
 
-![Day 9 보상 중복 발생 여부 검증](screenshots/day09_reward_validation.png)
+![09단계 보상 중복 발생 여부 검증](screenshots/day09_reward_validation.png)
 
-자세한 검증 조건과 결과는 [9일 차 전투 검증 보고서](docs/day09_battle_validation.md)에 정리했습니다. 순차 재공격은 검증했지만 동시 요청의 중복 지급 방지는 아직 부하 테스트로 검증하지 않았습니다.
+자세한 검증 조건과 결과는 [09단계 전투 검증 보고서](docs/day09_battle_validation.md)에 정리했습니다. 순차 재공격은 검증했지만 동시 요청의 중복 지급 방지는 아직 부하 테스트로 검증하지 않았습니다.
 
-## 진행 현황 및 다음 작업
+## 구현 순서 및 검증 현황
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| 1일 차 | 데이터베이스 설계 및 제약조건 검증 | 완료 |
-| 2일 차 | 저장 프로시저 및 트랜잭션 검증 | 완료 |
-| 3일 차 | 가상 사냥 기록 생성 및 인덱스 성능 분석 | 완료 |
-| 4일 차 | DB 패치 버전 관리, 백업 및 복원 | 완료 |
-| 5일 차 | Blocking·Deadlock 장애 재현 및 분석 | 완료 |
-| 6일 차 | FastAPI DB 연결 및 구매 API 실제 실행 | 완료 |
-| 7일 차 | RPG 웹 게임 화면 코드 작성·GitHub 반영 | 화면 실행 확인 |
-| 8일 차 | 모의 사냥 Stored Procedure 및 웹 게임 사냥터 연결 | 완료 |
-| 9일 차 | V003 턴제 전투 및 순차 재공격 검증 | 완료 |
+| 01. | 데이터베이스 설계 및 제약조건 검증 | 완료 |
+| 02. | 저장 프로시저 및 트랜잭션 검증 | 완료 |
+| 03. | 가상 사냥 기록 생성 및 인덱스 성능 분석 | 완료 |
+| 04. | DB 패치 버전 관리, 백업 및 복원 | 완료 |
+| 05. | Blocking·Deadlock 장애 재현 및 분석 | 완료 |
+| 06. | FastAPI DB 연결 및 구매 API 실제 실행 | 완료 |
+| 07. | RPG 웹 게임 화면 코드 작성·GitHub 반영 | 화면 실행 확인 |
+| 08. | 모의 사냥 Stored Procedure 및 웹 게임 사냥터 연결 | 완료 |
+| 09. | V003 턴제 전투 및 순차 재공격 검증 | 완료 |
 | 최종 정리 | 통합 보고서 및 기존 증빙 연결 | 완료 |
 | 추가 검증 과제 | 동시 요청 부하·인증·재시도·복구 범위 확대 | 미수행 |
 
@@ -238,7 +238,7 @@ Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세�
 
 - 가상 데이터와 로컬 SQL Server를 사용한 개인 실습으로, 실제 라이브 게임 서버 성능을 대표하지 않습니다.
 - 구매 실패 후 데이터 유지와 강제 오류에 따른 롤백, Blocking 감지 및 해소, Deadlock 재현 및 XML 분석을 검증했습니다. 다중 요청 부하와 애플리케이션 재시도 처리는 추가 검증이 필요합니다.
-- 3일 차 인덱스 실험은 강제 스캔과 인덱스 사용의 비교이며, 인덱스 도입에 따른 쓰기 비용은 아직 측정하지 않았습니다.
+- 03단계 인덱스 실험은 강제 스캔과 인덱스 사용의 비교이며, 인덱스 도입에 따른 쓰기 비용은 아직 측정하지 않았습니다.
 - V002 패치와 전체 백업·복원 및 주요 객체 검증을 완료했습니다. 모든 행의 값 일치나 복구 시간 목표까지 검증한 것은 아닙니다.
 - 게임 기능을 개별 검증한 결과는 확인했으나, 별도의 일괄 회귀 테스트·자동 테스트·동시 요청 부하 테스트까지 수행한 것은 아닙니다.
 
@@ -253,8 +253,8 @@ Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세�
 | 장애 대응 | Blocking·Deadlock 재현 절차와 DMV/XML 해석 지원 | 세션별 오류 재현, 실제 대기 상태·Deadlock XML 수집 및 검증 |
 | **게임 서버·API** | **AI를 활용한 FastAPI·pyodbc 연결, REST API 및 JavaScript `fetch()` 통신 코드 구현** | 로컬 서버 실행과 SQL Server 연결, 구매·사냥 API 실제 동작 확인 |
 | **웹 게임·턴제 전투** | **AI를 활용한 HTML/CSS/JavaScript UI와 V003 전투 프로시저·전투 상태 로직 초안 구현** | 웹 게임에서 전투 수행, SSMS 승리·보상 상태 및 순차 재공격 후 데이터 유지 확인 |
-| 문서화 | AI를 활용한 README와 일차별 보고서 문장 및 구성 정리 | 실습 결과·스크린샷 제공 및 실제 결과 확인 |
+| 문서화 | AI를 활용한 README와 단계별 보고서 문장 및 구성 정리 | 실습 결과·스크린샷 제공 및 실제 결과 확인 |
 
-**구분 원칙:** AI가 코드 초안 또는 구현을 지원한 부분은 직접 작성한 코드로 표기하지 않았습니다. 반대로 SQL Server에서 실제 실행해 확인한 성능 수치와 검증 결과는 AI 생성 예시가 아닌 실습 측정 결과입니다. 각 일차별 보고서 하단에도 관련 내용을 별도로 기록했습니다.
+**구분 원칙:** AI가 코드 초안 또는 구현을 지원한 부분은 직접 작성한 코드로 표기하지 않았습니다. 반대로 SQL Server에서 실제 실행해 확인한 성능 수치와 검증 결과는 AI 생성 예시가 아닌 실습 측정 결과입니다. 각 단계별 보고서 하단에도 관련 내용을 별도로 기록했습니다.
 
 **학습 내용:** 게임의 재화 변경을 안전하게 처리하는 방법과 조회 패턴에 맞춘 인덱스 설계·검증 과정을 익혔습니다.
