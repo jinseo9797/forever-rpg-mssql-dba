@@ -83,8 +83,15 @@
       </div>
       <div id="hunt-view" hidden>
         <h2>몬스터 사냥터</h2>
-        <p class="small muted">모의 사냥: 버튼을 누르면 DB에서 보상 골드를 지급하고 사냥 이력을 저장해. 전투 판정은 아직 없어.</p>
+        <p class="small muted">턴제 전투: 전투 시작 후 공격 버튼을 눌러 몬스터 HP를 줄여. 승리하면 서버가 보상을 지급해.</p>
         <div id="monsters"></div>
+        <div id="battle-panel" class="item" hidden style="display:block">
+          <h2 id="battle-title">진행 중인 전투</h2>
+          <div class="stat" style="margin-bottom:10px"><span class="small muted">내 HP</span><strong id="player-hp">—</strong></div>
+          <div class="stat" style="margin-bottom:10px"><span class="small muted">몬스터 HP</span><strong id="monster-hp">—</strong></div>
+          <p id="battle-state" class="small muted"></p>
+          <button id="attack-button" class="btn">⚔ 공격</button>
+        </div>
         <h2 style="margin-top:23px">최근 사냥 기록</h2>
         <div id="hunts"></div>
       </div>
@@ -97,6 +104,7 @@
   const $ = id => document.getElementById(id);
   let currentCharacterId = 1;
   let busy = false;
+  let currentBattle = null;
   const fmt = n => Number(n).toLocaleString('ko-KR');
   const iconFor = type => /weapon|sword|무기/i.test(type) ? '⚔' : /armor|방어구/i.test(type) ? '🛡' : /potion|소모/i.test(type) ? '⚗' : '✦';
   function message(text, error = false) {
@@ -160,7 +168,7 @@
     desc.textContent = 'Lv.' + monster.MonsterLevel + ' · HP ' + fmt(monster.MaxHP) + ' · 보상 ' + fmt(monster.RewardGold) + ' Gold';
     info.append(name,desc);
     const button = document.createElement('button'); button.className = 'btn'; button.textContent = '사냥';
-    button.addEventListener('click', () => hunt(monster,button));
+    button.addEventListener('click', () => startBattle(monster,button));
     row.append(sym,info,button);
     return row;
   }
@@ -182,21 +190,58 @@
     $('hunts').replaceChildren(...elements);
     if (!hunts.length) $('hunts').textContent='사냥 기록이 없어.';
   }
-  async function hunt(monster,button) {
+  function renderBattle(battle) {
+    currentBattle = battle;
+    $('battle-panel').hidden = !battle;
+    if (!battle) return;
+    $('battle-title').textContent = battle.MonsterName + ' 전투';
+    $('player-hp').textContent = fmt(battle.PlayerHP);
+    $('monster-hp').textContent = fmt(battle.MonsterHP);
+    $('battle-state').textContent = '상태: ' + battle.Status + ' · ' + fmt(battle.TurnCount) + '턴';
+    $('attack-button').disabled = battle.Status !== 'Active';
+  }
+  async function loadBattle() {
+    renderBattle(await api('/characters/' + currentCharacterId + '/battle'));
+  }
+  async function startBattle(monster, button) {
     if (busy) return;
-    if (!window.confirm(monster.MonsterName + '을(를) 사냥할까? 성공 요청은 실제 DB에 보상을 지급해.')) return;
-    busy=true; button.disabled=true;
+    busy = true; button.disabled = true;
     try {
-      const result=await api('/hunt',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({character_id:currentCharacterId,monster_id:monster.MonsterId})});
-      await Promise.all([loadCharacter(),loadHunts()]);
-      message(result.ResultMessage + ' · +' + fmt(result.EarnedGold) + ' Gold');
-    } catch(err) {message(err.message,true);}
+      const battle = await api('/battle/start', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({character_id:currentCharacterId,monster_id:monster.MonsterId})
+      });
+      renderBattle(battle);
+      message('전투가 시작됐어. 공격 버튼을 눌러봐.');
+    } catch(err) { message(err.message,true); }
     finally {busy=false;button.disabled=false;}
+  }
+  async function attack() {
+    if (busy || !currentBattle || currentBattle.Status !== 'Active') return;
+    busy=true; $('attack-button').disabled=true;
+    try {
+      const result = await api('/battle/attack', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({character_id:currentCharacterId,battle_id:currentBattle.BattleId})
+      });
+      renderBattle(result);
+      if (result.Status === 'Won') {
+        message('승리! +' + fmt(result.RewardGold) + ' Gold. 전투 기록을 저장했어.');
+        await Promise.all([loadCharacter(),loadHunts()]);
+      } else if (result.Status === 'Lost') {
+        message('패배했어. 보상은 지급되지 않아.',true);
+      } else {
+        message('공격 ' + fmt(result.PlayerDamage) + ' 피해 · 반격 ' + fmt(result.MonsterDamage) + ' 피해');
+      }
+      if (result.Status !== 'Active') {
+        renderBattle(null);
+      }
+    } catch(err) {message(err.message,true);}
+    finally {busy=false; $('attack-button').disabled = !currentBattle || currentBattle.Status !== 'Active';}
   }
   async function refresh() {
     try {
-      await Promise.all([loadCharacter(), loadItems(), loadInventory(), loadMonsters(), loadHunts()]);
+      await Promise.all([loadCharacter(), loadItems(), loadInventory(), loadMonsters(), loadHunts(), loadBattle()]);
       message('최신 데이터로 새로고침했어.');
     } catch (err) { message(err.message, true); }
   }
@@ -236,6 +281,7 @@
   $('tab-shop').addEventListener('click', () => tab('shop'));
   $('tab-inventory').addEventListener('click', () => tab('inventory'));
   $('tab-hunt').addEventListener('click', () => tab('hunt'));
+  $('attack-button').addEventListener('click', attack);
   refresh();
 </script>
 </body>
