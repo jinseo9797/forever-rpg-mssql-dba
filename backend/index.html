@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Forever RPG — 영웅의 기록</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0d1019;--panel:#191e2b;--line:#363d4e;--muted:#a5adbd;--gold:#e9bd6d;--red:#e28e92}
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(ellipse at 20% 0%,#293147 0%,#0d1019 53%);color:#f0f2f6;font-family:system-ui,-apple-system,"Malgun Gothic",sans-serif}
+    .wrap{max-width:1120px;margin:auto;padding:35px 20px 80px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:24px}
+    .eyebrow{font-size:12px;letter-spacing:.23em;color:var(--gold);font-weight:700}
+    h1{font-family:Georgia,serif;font-size:clamp(32px,5vw,52px);margin:8px 0;color:#f5e5c5}
+    h2{margin:0 0 16px;font-size:21px}.muted{color:var(--muted)}.small{font-size:13px}
+    .btn{border:1px solid #a88347;color:#18120a;background:linear-gradient(#f2d594,#c99d52);padding:11px 17px;border-radius:9px;font-weight:750;cursor:pointer}
+    .btn:hover{filter:brightness(1.07)}.btn:disabled{opacity:.5;cursor:wait}
+    .btn.secondary{color:#f2e8d6;background:#272c3b;border-color:#545b6e}
+    .pill{border:1px solid #675739;background:#2b2927;color:#efc880;border-radius:50px;padding:8px 12px}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:18px}
+    .panel{background:linear-gradient(145deg,#202638,#151924);border:1px solid var(--line);border-radius:17px;padding:23px;box-shadow:0 18px 40px #05070c5c}
+    .character-portrait{height:172px;border:1px solid #5d5260;border-radius:12px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,#414967 0%,#23283c 48%,#151923 100%);font-size:74px;margin-bottom:18px}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+    .stat{background:#0f1422;border:1px solid #323b4c;border-radius:10px;padding:12px}
+    .stat strong{display:block;font-size:20px;margin-top:5px}
+    .tabline{display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap}
+    .tabline button{background:#292f3f;color:#e4e7ef;border:1px solid #485266;border-radius:8px;padding:9px 14px;cursor:pointer}
+    .tabline button.active{background:#4c3b24;color:#f4dba5;border-color:#bd9554}
+    .item{display:flex;gap:14px;align-items:center;border:1px solid #3d4558;border-radius:12px;background:#171d2b;padding:14px;margin:10px 0}
+    .item-symbol{width:47px;height:47px;display:grid;place-items:center;background:#343249;border-radius:10px;font-size:27px;flex:none}
+    .item-info{flex:1;min-width:0}.item-info b{display:block;word-break:break-word}.item-info .small{margin-top:4px}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    input,select{background:#0c1220;color:#fff;border:1px solid #60697c;padding:10px;border-radius:8px}
+    input{width:64px}select{max-width:135px}
+    #message{min-height:20px;margin:15px 0;font-size:14px}#message.error{color:var(--red)}#message.ok{color:#a9e4b2}
+    footer{margin-top:26px;text-align:center;font-size:12px;color:#8792a7}
+    [hidden]{display:none!important}
+    @media(max-width:760px){.layout{grid-template-columns:1fr}.item{align-items:flex-start;flex-wrap:wrap}.actions{width:100%;justify-content:flex-start}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><div class="eyebrow">THE CHRONICLES OF</div><h1>FOREVER RPG</h1><div class="muted">실제 SQL Server 데이터와 연결된 영웅의 기록</div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label class="small muted" for="character-select">캐릭터 ID</label>
+      <select id="character-select" aria-label="캐릭터 선택">
+        <option value="1">1 · 아르테미스</option>
+        <option value="2">2 · 레오나</option>
+        <option value="3">3 · 카이</option>
+      </select>
+      <button id="refresh" class="btn secondary">↻ 새로고침</button>
+    </div>
+  </header>
+  <div class="layout">
+    <section class="panel">
+      <div class="character-portrait" role="img" aria-label="기사 투구 아이콘">♜</div>
+      <div class="eyebrow">CHARACTER RECORD</div>
+      <h2 id="character-name" style="margin:8px 0">캐릭터 불러오는 중…</h2>
+      <div id="character-class" class="muted small">SQL Server 연결 확인 중</div>
+      <div class="stats">
+        <div class="stat"><span class="small muted">LEVEL</span><strong id="level">—</strong></div>
+        <div class="stat"><span class="small muted">GOLD</span><strong id="gold" style="color:var(--gold)">—</strong></div>
+      </div>
+      <div class="pill small">● SQL Server · ForeverRPG</div>
+      <p class="small muted" style="line-height:1.7">골드와 인벤토리는 실제 데이터베이스 값을 보여줘. 구매하면 기존 Stored Procedure에서 골드를 차감하고 아이템을 지급해.</p>
+    </section>
+    <section class="panel">
+      <div class="tabline">
+        <button id="tab-shop" class="active" aria-pressed="true">⚒ 상점</button>
+        <button id="tab-inventory" aria-pressed="false">▦ 인벤토리</button>
+      </div>
+      <div id="shop-view">
+        <h2>왕국의 상점</h2>
+        <p class="small muted">아이템을 선택해 구매할 수 있어. 가격과 수량은 DB 기준이야.</p>
+        <div id="items"></div>
+      </div>
+      <div id="inventory-view" hidden>
+        <h2>보유 아이템</h2>
+        <p class="small muted">캐릭터의 인벤토리에 저장된 아이템 목록이야.</p>
+        <div id="inventory"></div>
+      </div>
+      <div id="message" role="status" aria-live="polite"></div>
+    </section>
+  </div>
+  <footer>FOREVER RPG · Local demo · FastAPI + SQL Server · 로그인 기능이 없는 개인 개발용 실습 화면</footer>
+</div>
+<script>
+  const $ = id => document.getElementById(id);
+  let currentCharacterId = 1;
+  let busy = false;
+  const fmt = n => Number(n).toLocaleString('ko-KR');
+  const iconFor = type => /weapon|sword|무기/i.test(type) ? '⚔' : /armor|방어구/i.test(type) ? '🛡' : /potion|소모/i.test(type) ? '⚗' : '✦';
+  function message(text, error = false) {
+    $('message').textContent = text;
+    $('message').className = error ? 'error' : 'ok';
+  }
+  async function api(url, options = {}) {
+    const response = await fetch(url, options);
+    let payload;
+    try { payload = await response.json(); } catch { payload = null; }
+    if (!response.ok) throw new Error((payload && typeof payload.detail === 'string' && payload.detail) || '요청에 실패했어.');
+    return payload;
+  }
+  function createItem(data, inventory) {
+    const row = document.createElement('div');
+    row.className = 'item';
+    const sym = document.createElement('div');
+    sym.className = 'item-symbol';
+    sym.textContent = iconFor(data.ItemType || '');
+    const info = document.createElement('div');
+    info.className = 'item-info';
+    const name = document.createElement('b');
+    name.textContent = data.ItemName;
+    const desc = document.createElement('div');
+    desc.className = 'muted small';
+    desc.textContent = inventory ? '보유 수량 ' + fmt(data.Quantity) : (data.ItemType + ' · ' + fmt(data.Price) + ' Gold');
+    info.append(name, desc); row.append(sym, info);
+    if (!inventory) {
+      const actions = document.createElement('div'); actions.className = 'actions';
+      const qty = document.createElement('input'); qty.type = 'number'; qty.min = '1'; qty.max = '1000'; qty.value = '1'; qty.setAttribute('aria-label', data.ItemName + ' 구매 수량');
+      const button = document.createElement('button'); button.className = 'btn'; button.textContent = '구매';
+      button.addEventListener('click', () => purchase(data, qty, button));
+      actions.append(qty, button); row.append(actions);
+    }
+    return row;
+  }
+  async function loadCharacter() {
+    const char = await api('/characters/' + currentCharacterId);
+    $('character-name').textContent = char.CharacterName;
+    $('character-class').textContent = char.ClassName + ' · Character #' + char.CharacterId;
+    $('level').textContent = fmt(char.CharacterLevel);
+    $('gold').textContent = fmt(char.Gold);
+  }
+  async function loadItems() {
+    const items = await api('/items');
+    $('items').replaceChildren(...items.map(x => createItem(x, false)));
+    if (!items.length) $('items').textContent = '판매 중인 아이템이 없어.';
+  }
+  async function loadInventory() {
+    const inv = await api('/characters/' + currentCharacterId + '/inventory');
+    $('inventory').replaceChildren(...inv.map(x => createItem(x, true)));
+    if (!inv.length) $('inventory').textContent = '보유한 아이템이 없어.';
+  }
+  async function refresh() {
+    try {
+      await Promise.all([loadCharacter(), loadItems(), loadInventory()]);
+      message('최신 데이터로 새로고침했어.');
+    } catch (err) { message(err.message, true); }
+  }
+  async function purchase(item, input, button) {
+    const quantity = Number(input.value);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1000) { message('구매 수량은 1~1000개로 입력해 줘.', true); return; }
+    const total = item.Price * quantity;
+    if (!window.confirm(item.ItemName + ' ' + quantity + '개를 ' + fmt(total) + ' Gold에 구매할까? 실제 DB 데이터가 변경돼.')) return;
+    if (busy) return;
+    busy = true; button.disabled = true;
+    try {
+      const result = await api('/purchase', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({character_id:currentCharacterId,item_id:item.ItemId,quantity})
+      });
+      await Promise.all([loadCharacter(), loadInventory()]);
+      message(result.ResultMessage + ' · ' + fmt(result.TotalPrice) + ' Gold 사용');
+    } catch (err) { message(err.message, true); }
+    finally { busy = false; button.disabled = false; }
+  }
+  function tab(which) {
+    $('shop-view').hidden = which !== 'shop';
+    $('inventory-view').hidden = which !== 'inventory';
+    $('tab-shop').classList.toggle('active', which === 'shop');
+    $('tab-inventory').classList.toggle('active', which === 'inventory');
+    $('tab-shop').setAttribute('aria-pressed', String(which === 'shop'));
+    $('tab-inventory').setAttribute('aria-pressed', String(which === 'inventory'));
+  }
+  $('character-select').addEventListener('change', e => {
+    currentCharacterId = Number(e.target.value);
+    refresh();
+  });
+  $('refresh').addEventListener('click', refresh);
+  $('tab-shop').addEventListener('click', () => tab('shop'));
+  $('tab-inventory').addEventListener('click', () => tab('inventory'));
+  refresh();
+</script>
+</body>
+</html>
