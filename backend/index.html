@@ -69,6 +69,7 @@
       <div class="tabline">
         <button id="tab-shop" class="active" aria-pressed="true">⚒ 상점</button>
         <button id="tab-inventory" aria-pressed="false">▦ 인벤토리</button>
+        <button id="tab-hunt" aria-pressed="false">⚔ 사냥터</button>
       </div>
       <div id="shop-view">
         <h2>왕국의 상점</h2>
@@ -79,6 +80,13 @@
         <h2>보유 아이템</h2>
         <p class="small muted">캐릭터의 인벤토리에 저장된 아이템 목록이야.</p>
         <div id="inventory"></div>
+      </div>
+      <div id="hunt-view" hidden>
+        <h2>몬스터 사냥터</h2>
+        <p class="small muted">모의 사냥: 버튼을 누르면 DB에서 보상 골드를 지급하고 사냥 이력을 저장해. 전투 판정은 아직 없어.</p>
+        <div id="monsters"></div>
+        <h2 style="margin-top:23px">최근 사냥 기록</h2>
+        <div id="hunts"></div>
       </div>
       <div id="message" role="status" aria-live="polite"></div>
     </section>
@@ -142,9 +150,53 @@
     $('inventory').replaceChildren(...inv.map(x => createItem(x, true)));
     if (!inv.length) $('inventory').textContent = '보유한 아이템이 없어.';
   }
+  function createMonster(monster) {
+    const row = document.createElement('div');
+    row.className = 'item';
+    const sym = document.createElement('div'); sym.className = 'item-symbol'; sym.textContent = '🐉';
+    const info = document.createElement('div'); info.className = 'item-info';
+    const name = document.createElement('b'); name.textContent = monster.MonsterName;
+    const desc = document.createElement('div'); desc.className = 'muted small';
+    desc.textContent = 'Lv.' + monster.MonsterLevel + ' · HP ' + fmt(monster.MaxHP) + ' · 보상 ' + fmt(monster.RewardGold) + ' Gold';
+    info.append(name,desc);
+    const button = document.createElement('button'); button.className = 'btn'; button.textContent = '사냥';
+    button.addEventListener('click', () => hunt(monster,button));
+    row.append(sym,info,button);
+    return row;
+  }
+  async function loadMonsters() {
+    const monsters = await api('/monsters');
+    $('monsters').replaceChildren(...monsters.map(createMonster));
+    if (!monsters.length) $('monsters').textContent = '사냥 가능한 몬스터가 없어.';
+  }
+  async function loadHunts() {
+    const hunts = await api('/characters/' + currentCharacterId + '/hunts');
+    const elements = hunts.map(h => {
+      const row = document.createElement('div'); row.className='item';
+      const info = document.createElement('div'); info.className='item-info';
+      const name = document.createElement('b'); name.textContent=h.MonsterName + ' · +' + fmt(h.EarnedGold) + ' Gold';
+      const meta = document.createElement('div'); meta.className='muted small';
+      meta.textContent = String(h.HuntedAt).replace('T',' ').slice(0,19);
+      info.append(name,meta); row.append(info); return row;
+    });
+    $('hunts').replaceChildren(...elements);
+    if (!hunts.length) $('hunts').textContent='사냥 기록이 없어.';
+  }
+  async function hunt(monster,button) {
+    if (busy) return;
+    if (!window.confirm(monster.MonsterName + '을(를) 사냥할까? 성공 요청은 실제 DB에 보상을 지급해.')) return;
+    busy=true; button.disabled=true;
+    try {
+      const result=await api('/hunt',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({character_id:currentCharacterId,monster_id:monster.MonsterId})});
+      await Promise.all([loadCharacter(),loadHunts()]);
+      message(result.ResultMessage + ' · +' + fmt(result.EarnedGold) + ' Gold');
+    } catch(err) {message(err.message,true);}
+    finally {busy=false;button.disabled=false;}
+  }
   async function refresh() {
     try {
-      await Promise.all([loadCharacter(), loadItems(), loadInventory()]);
+      await Promise.all([loadCharacter(), loadItems(), loadInventory(), loadMonsters(), loadHunts()]);
       message('최신 데이터로 새로고침했어.');
     } catch (err) { message(err.message, true); }
   }
@@ -168,10 +220,13 @@
   function tab(which) {
     $('shop-view').hidden = which !== 'shop';
     $('inventory-view').hidden = which !== 'inventory';
+    $('hunt-view').hidden = which !== 'hunt';
     $('tab-shop').classList.toggle('active', which === 'shop');
     $('tab-inventory').classList.toggle('active', which === 'inventory');
+    $('tab-hunt').classList.toggle('active', which === 'hunt');
     $('tab-shop').setAttribute('aria-pressed', String(which === 'shop'));
     $('tab-inventory').setAttribute('aria-pressed', String(which === 'inventory'));
+    $('tab-hunt').setAttribute('aria-pressed', String(which === 'hunt'));
   }
   $('character-select').addEventListener('change', e => {
     currentCharacterId = Number(e.target.value);
@@ -180,6 +235,7 @@
   $('refresh').addEventListener('click', refresh);
   $('tab-shop').addEventListener('click', () => tab('shop'));
   $('tab-inventory').addEventListener('click', () => tab('inventory'));
+  $('tab-hunt').addEventListener('click', () => tab('hunt'));
   refresh();
 </script>
 </body>
