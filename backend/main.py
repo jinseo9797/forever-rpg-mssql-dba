@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from db import db_cursor, rows_as_dict
 
-app = FastAPI(title="Forever RPG API", version="0.2.0")
+app = FastAPI(title="Forever RPG API", version="0.3.0")
 logger = logging.getLogger(__name__)
 
 
@@ -128,4 +128,83 @@ def purchase_item(request: PurchaseRequest):
 
     if not result:
         raise HTTPException(status_code=503, detail="구매 결과를 반환받지 못했습니다.")
+    return result[0]
+
+
+# 사냥 SP에서 반환하는 오류
+HUNT_ERRORS = {
+    50101: (400, "캐릭터와 몬스터 ID를 확인해 주세요."),
+    50102: (404, "존재하지 않는 캐릭터입니다."),
+    50103: (400, "사냥할 수 없는 몬스터입니다."),
+    50104: (409, "몬스터 보상 설정 오류입니다."),
+    50105: (409, "보유 골드 최대치를 초과합니다."),
+    50106: (409, "골드 지급에 실패했습니다."),
+}
+
+
+class HuntRequest(BaseModel):
+    character_id: int = Field(gt=0)
+    monster_id: int = Field(gt=0)
+
+
+@app.get("/monsters")
+def list_monsters():
+    try:
+        with db_cursor() as cursor:
+            cursor.execute(
+                "SELECT MonsterId, MonsterName, MonsterLevel, MaxHP, RewardGold "
+                "FROM dbo.Monsters WHERE IsActive = 1 ORDER BY MonsterId"
+            )
+            return rows_as_dict(cursor)
+    except (pyodbc.Error, RuntimeError):
+        logger.exception("몬스터 목록 조회 실패")
+        raise HTTPException(status_code=503, detail="몬스터 목록 조회 실패")
+
+
+@app.get("/characters/{character_id}/hunts")
+def get_recent_hunts(character_id: int):
+    if character_id <= 0:
+        raise HTTPException(status_code=400, detail="유효하지 않은 캐릭터 ID")
+    try:
+        with db_cursor() as cursor:
+            # Day 3 인덱스의 CharacterId + HuntedAt 순서를 이용하는 조회 패턴
+            cursor.execute(
+                "SELECT TOP (20) h.HuntId, h.MonsterId, m.MonsterName, "
+                "h.EarnedGold, h.HuntedAt "
+                "FROM dbo.HuntHistory AS h "
+                "JOIN dbo.Monsters AS m ON m.MonsterId = h.MonsterId "
+                "WHERE h.CharacterId = ? "
+                "ORDER BY h.HuntedAt DESC, h.HuntId DESC",
+                character_id,
+            )
+            return rows_as_dict(cursor)
+    except (pyodbc.Error, RuntimeError):
+        logger.exception("사냥 이력 조회 실패")
+        raise HTTPException(status_code=503, detail="사냥 기록 조회 실패")
+
+
+@app.post("/hunt")
+def hunt_monster(request: HuntRequest):
+    # 골드 지급과 이력 기록은 SQL Server 프로시저가 트랜잭션으로 처리
+    try:
+        with db_cursor() as cursor:
+            cursor.execute(
+                "EXEC dbo.usp_HuntMonster @CharacterId=?, @MonsterId=?",
+                request.character_id,
+                request.monster_id,
+            )
+            result = rows_as_dict(cursor)
+    except pyodbc.Error as exc:
+        error_text = " ".join(str(part) for part in exc.args)
+        for number, (status, detail) in HUNT_ERRORS.items():
+            if re.search(rf"\({number}\)", error_text):
+                raise HTTPException(status_code=status, detail=detail) from exc
+        logger.exception("사냥 SQL 처리 실패")
+        raise HTTPException(status_code=503, detail="사냥 처리 중 데이터베이스 오류가 발생했습니다.") from exc
+    except RuntimeError:
+        logger.exception("DB 연결 설정 오류")
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+
+    if not result:
+        raise HTTPException(status_code=503, detail="사냥 결과를 반환받지 못했습니다.")
     return result[0]
