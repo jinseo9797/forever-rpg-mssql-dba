@@ -36,7 +36,7 @@ Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고
 
 **Microsoft SQL Server · SSMS · T-SQL · Git · GitHub**
 
-게임 서버 및 로컬 웹 게임 구현: Python(FastAPI), pyodbc, HTML/CSS/JavaScript. V003 전투 승리 및 순차 재공격 검증 완료
+게임 서버 및 로컬 웹 게임 구현: Python(FastAPI), pyodbc, HTML/CSS/JavaScript. **FastAPI·JavaScript `fetch()` 통신과 웹 화면 구현에는 AI를 활용**했으며, V003 전투 승리 및 순차 재공격 결과는 로컬에서 직접 검증했습니다.
 
 실습 상세 내용과 SQL 실행 근거는 각 일차별 보고서 및 테스트 파일에서 확인할 수 있습니다.
 
@@ -77,7 +77,7 @@ uvicorn main:app --reload
 
 **적용 순서:** [V003 패치](database/migrations/V003__add_battle_encounters.sql) → [usp_HuntMonster 수정본](database/procedures/usp_HuntMonster.sql) → [usp_StartBattle](database/procedures/usp_StartBattle.sql) → [usp_AttackBattle](database/procedures/usp_AttackBattle.sql). 적용 뒤 FastAPI 서버를 다시 시작합니다. 기존 `06_hunt_validation.sql`의 무조건 사냥 EXEC 예시는 V003 이후 적용되지 않으므로 사용하지 마세요.
 
-**주의:** 구매는 실제 개발 DB의 재화와 인벤토리를 변경합니다. 현재 웹 게임에는 로그인·권한 검사가 없으므로, 로컬 개발 환경에서만 실행하고 외부에 공개하지 않아야 합니다. `.env` 파일을 GitHub에 업로드하지 않습니다. 웹 화면이 실제로 표시되고 동작하는지는 로컬에서 추가 검증이 필요합니다.
+**주의:** 구매는 실제 개발 DB의 재화와 인벤토리를 변경합니다. 현재 웹 게임에는 로그인·권한 검사가 없으므로, 로컬 개발 환경에서만 실행하고 외부에 공개하지 않아야 합니다. `.env` 파일을 GitHub에 업로드하지 않습니다. 웹 화면 실행과 구매·사냥 및 전투 동작은 로컬에서 확인했지만, 외부 배포와 동시성 부하 테스트는 수행하지 않았습니다.
 
 ## 프로젝트 구성
 
@@ -234,8 +234,19 @@ Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세�
 - 3일 차 인덱스 실험은 강제 스캔과 인덱스 사용의 비교이며, 인덱스 도입에 따른 쓰기 비용은 아직 측정하지 않았습니다.
 - V002 패치와 전체 백업·복원 및 주요 객체 검증을 완료했습니다. 모든 행의 값 일치나 복구 시간 목표까지 검증한 것은 아닙니다.
 
-## AI 활용 범위
+## AI 활용 및 직접 수행 범위
 
-AI는 초기 스키마 및 저장 프로시저 초안, FastAPI·웹 화면 코드 작성, SQL 실습 안내와 문서 정리를 지원했습니다. SQL Server에서 스크립트 실행, 구매 검증, 실행 계획 확인, 성능 측정, 패치 및 백업·복원 검증, Blocking·Deadlock 실습은 직접 수행했습니다.
+이 프로젝트에서는 **AI를 활용하여 개발 보조 코드와 SQL 초안을 작성**하고, 실제 데이터베이스 작업 및 검증은 로컬 환경에서 수행했습니다.
+
+| 영역 | AI 활용 내용 | 직접 수행한 내용 |
+|---|---|---|
+| DB 설계·프로시저 | 테이블·제약조건 및 트랜잭션 SQL 초안 작성 지원 | SSMS 실행, 제약조건·구매 성공/실패·ROLLBACK 검증 |
+| 인덱스·운영 | 성능 비교·패치·백업·복원 테스트 SQL 및 문서 정리 지원 | 인덱스 생성과 5회 측정, 실행 계획 분석, 패치·백업·복원 수행 |
+| 장애 대응 | Blocking·Deadlock 재현 절차와 DMV/XML 해석 지원 | 세션별 오류 재현, 실제 대기 상태·Deadlock XML 수집 및 검증 |
+| **게임 서버·API** | **AI를 활용한 FastAPI·pyodbc 연결, REST API 및 JavaScript `fetch()` 통신 코드 구현** | 로컬 서버 실행과 SQL Server 연결, 구매·사냥 API 실제 동작 확인 |
+| **웹 게임·턴제 전투** | **AI를 활용한 HTML/CSS/JavaScript UI와 V003 전투 프로시저·전투 상태 로직 초안 구현** | 웹 게임에서 전투 수행, SSMS 승리·보상 상태 및 순차 재공격 후 데이터 유지 확인 |
+| 문서화 | AI를 활용한 README와 일차별 보고서 문장 및 구성 정리 | 실습 결과·스크린샷 제공 및 실제 결과 확인 |
+
+**구분 원칙:** AI가 코드 초안 또는 구현을 지원한 부분은 직접 작성한 코드로 표기하지 않았습니다. 반대로 SQL Server에서 실제 실행해 확인한 성능 수치와 검증 결과는 AI 생성 예시가 아닌 실습 측정 결과입니다. 각 일차별 보고서 하단에도 관련 내용을 별도로 기록했습니다.
 
 **학습 내용:** 게임의 재화 변경을 안전하게 처리하는 방법과 조회 패턴에 맞춘 인덱스 설계·검증 과정을 익혔습니다.
