@@ -89,6 +89,12 @@ V002 재실행 시 패치 이력이 중복 등록되지 않는 것을 확인했�
 
 관련 문서: [Blocking](day05_blocking_troubleshooting.md) · [Deadlock](day05_deadlock_analysis.md)
 
+### 웹 게임 구현 화면
+
+![Forever RPG 웹 게임 실행 화면](../screenshots/forever-web.png)
+
+FastAPI와 JavaScript `fetch()` 통신 및 웹 UI 구현에는 AI를 활용했고, 로컬 게임 실행과 SQL Server 데이터 연동은 직접 검증했습니다. DB 테이블 설계는 직접 수행했으며 저장 프로시저는 AI의 도움을 받아 작성했습니다.
+
 ### 웹 게임 및 턴제 전투
 
 브라우저에서 FastAPI·SQL Server 연결과 구매·사냥 기능이 실제 작동함을 확인했습니다. V003의 첫 승리 기록은 다음과 같습니다.
