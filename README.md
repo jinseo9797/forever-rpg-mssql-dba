@@ -34,35 +34,45 @@ Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고
 
 **Microsoft SQL Server · SSMS · T-SQL · Git · GitHub**
 
-게임 서버 연동 진행 중: Python(FastAPI), pyodbc (캐릭터 조회·인벤토리 조회·구매 API 구현, 웹 클라이언트 예정)
+게임 서버 및 로컬 웹 게임 구현: Python(FastAPI), pyodbc, HTML/CSS/JavaScript (게임 화면의 실제 DB 연동은 로컬에서 검증 예정)
 
 실습 상세 내용과 SQL 실행 근거는 각 일차별 보고서 및 테스트 파일에서 확인할 수 있습니다.
 
 성능 확인: `SET STATISTICS IO`, `SET STATISTICS TIME`, 실제 실행 계획  
 동시성 제어: `UPDLOCK`, `HOLDLOCK`, `TRY/CATCH`, `XACT_STATE()`
 
-## FastAPI 게임 서버 실행 (개발 환경)
+## Forever RPG 웹 게임 실행 (로컬 개발 환경)
 
-\`backend/\`에 SQL Server 연결 및 조회 API의 초기 코드를 추가했습니다. Windows에서 Python과 Microsoft ODBC Driver 18 for SQL Server를 설치하고 아래 명령을 실행합니다.
+`backend/`에서 FastAPI와 게임 화면을 함께 실행합니다. Windows에 Python 및 Microsoft ODBC Driver 18 for SQL Server가 필요합니다.
 
 ```powershell
 cd backend
-py -m venv .venv
-.venv\\Scripts\\Activate.ps1
+python -m venv .venv
+# PowerShell 가상환경 활성화가 막히면 실행 정책을 확인
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
+# .env의 DB_SERVER를 SSMS 연결 서버로 설정
 uvicorn main:app --reload
 ```
 
-\`.env\`의 \`DB_SERVER\`를 SSMS에서 접속하는 SQL Server 이름에 맞게 수정하고, 사용 가능한 ODBC 드라이버도 확인합니다. Windows 인증을 사용하는 경우 FastAPI 실행 계정에 DB 연결 권한이 필요합니다. \`.env\`는 Git에 업로드하지 않습니다.
+- **게임 화면:** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+- DB 상태: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+- API 문서: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- 캐릭터 조회: `GET /characters/{character_id}`
+- 상점 조회: `GET /items`
+- 인벤토리 조회: `GET /characters/{character_id}/inventory`
+- 구매 처리: `POST /purchase` → `dbo.usp_PurchaseItem`
 
-첫 연결 테스트: \`http://127.0.0.1:8000/health\`, 캐릭터 조회: \`http://127.0.0.1:8000/characters/1\`, API 문서: \`http://127.0.0.1:8000/docs\`. 구매 API 및 웹 화면은 후속 단계에서 구현할 예정입니다.
+상점에서 구매하면 SQL Server의 기존 저장 프로시저가 골드 차감, 인벤토리 지급, 구매 이력을 트랜잭션으로 처리합니다. 화면은 이후 캐릭터와 인벤토리 정보를 다시 조회합니다.
+
+**주의:** 구매는 실제 개발 DB의 재화와 인벤토리를 변경합니다. 현재 웹 게임에는 로그인·권한 검사가 없으므로, 로컬 개발 환경에서만 실행하고 외부에 공개하지 않아야 합니다. `.env` 파일을 GitHub에 업로드하지 않습니다. 웹 화면이 실제로 표시되고 동작하는지는 로컬에서 추가 검증이 필요합니다.
 
 ## 프로젝트 구성
 
 ```text
 forever-rpg-mssql-dba/
-├── backend/                    # FastAPI 및 SQL Server 연결
+├── backend/                    # FastAPI · SQL Server 연결 · 웹 게임 화면
 ├── database/
 │   ├── migrations/             # 최초 데이터베이스 스키마
 │   ├── procedures/             # 캐릭터·아이템 조회 및 구매 처리
@@ -184,7 +194,8 @@ Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세�
 | 3일 차 | 가상 사냥 기록 생성 및 인덱스 성능 분석 | 완료 |
 | 4일 차 | DB 패치 버전 관리, 백업 및 복원 | 완료 |
 | 5일 차 | Blocking·Deadlock 장애 재현 및 분석 | 완료 |
-| 다음 단계 | FastAPI 백엔드 및 RPG 게임 연동 | 예정 |
+| 6일 차 | FastAPI DB 연결 및 구매 API 실제 실행 | 완료 |
+| 7일 차 | RPG 웹 게임 화면 코드 작성·GitHub 반영 | 로컬 검증 예정 |
 
 ## 실습 범위와 한계
 
@@ -195,6 +206,6 @@ Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세�
 
 ## AI 활용 범위
 
-AI는 초기 스키마 및 저장 프로시저 초안, SQL 실습 안내와 문서 정리를 지원했습니다. SQL Server에서 스크립트 실행, 구매 검증, 실행 계획 확인, 성능 측정, 패치 및 백업·복원 검증, Blocking·Deadlock 실습은 직접 수행했습니다.
+AI는 초기 스키마 및 저장 프로시저 초안, FastAPI·웹 화면 코드 작성, SQL 실습 안내와 문서 정리를 지원했습니다. SQL Server에서 스크립트 실행, 구매 검증, 실행 계획 확인, 성능 측정, 패치 및 백업·복원 검증, Blocking·Deadlock 실습은 직접 수행했습니다.
 
 **학습 내용:** 게임의 재화 변경을 안전하게 처리하는 방법과 조회 패턴에 맞춘 인덱스 설계·검증 과정을 익혔습니다.
