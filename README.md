@@ -34,7 +34,7 @@ Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고
 
 **Microsoft SQL Server · SSMS · T-SQL · Git · GitHub**
 
-게임 서버 및 로컬 웹 게임 구현: Python(FastAPI), pyodbc, HTML/CSS/JavaScript (게임 화면의 실제 DB 연동은 로컬에서 검증 예정)
+게임 서버 및 로컬 웹 게임 구현: Python(FastAPI), pyodbc, HTML/CSS/JavaScript. 턴제 전투(V003)는 로컬 검증 예정
 
 실습 상세 내용과 SQL 실행 근거는 각 일차별 보고서 및 테스트 파일에서 확인할 수 있습니다.
 
@@ -65,11 +65,15 @@ uvicorn main:app --reload
 - 구매 처리: `POST /purchase` → `dbo.usp_PurchaseItem`
 - 활성 몬스터: `GET /monsters`
 - 최근 사냥 기록: `GET /characters/{character_id}/hunts`
-- 사냥 보상 처리: `POST /hunt` → `dbo.usp_HuntMonster`
+- 전투 시작: `POST /battle/start` → `dbo.usp_StartBattle`
+- 턴 공격: `POST /battle/attack` → `dbo.usp_AttackBattle`
+- 진행 중인 전투: `GET /characters/{character_id}/battle`
 
 상점에서 구매하면 SQL Server의 기존 저장 프로시저가 골드 차감, 인벤토리 지급, 구매 이력을 트랜잭션으로 처리합니다. 화면은 이후 캐릭터와 인벤토리 정보를 다시 조회합니다.
 
-사냥터에서는 활성 몬스터 목록과 최근 20건의 사냥 기록을 조회하고, 사냥 버튼으로 `POST /hunt` API가 `dbo.usp_HuntMonster`를 호출합니다. **사냥 기능은 별도 전투 승패 판정 없이 보상 골드와 HuntHistory를 기록하는 모의 사냥**이며, 실제 실행 전 SSMS에 [usp_HuntMonster.sql](database/procedures/usp_HuntMonster.sql)을 등록해야 합니다. [사냥 검증 SQL](database/tests/06_hunt_validation.sql)도 함께 확인하세요.
+사냥터에서는 몬스터를 선택해 서버에서 관리하는 턴제 전투를 진행합니다. **V003 패치와 전투 프로시저 3개를 반드시 SSMS에 반영한 후** 웹 게임을 테스트하세요. 전투 상태는 `BattleEncounters`에 저장되며, 승리한 전투만 `usp_HuntMonster`를 통해 보상 골드와 `HuntHistory`를 한 번 기록합니다. 기존에 보상을 즉시 지급하던 `/hunt` API는 제거했습니다.
+
+**적용 순서:** [V003 패치](database/migrations/V003__add_battle_encounters.sql) → [usp_HuntMonster 수정본](database/procedures/usp_HuntMonster.sql) → [usp_StartBattle](database/procedures/usp_StartBattle.sql) → [usp_AttackBattle](database/procedures/usp_AttackBattle.sql). 적용 뒤 FastAPI 서버를 다시 시작합니다. 기존 `06_hunt_validation.sql`의 무조건 사냥 EXEC 예시는 V003 이후 적용되지 않으므로 사용하지 마세요.
 
 **주의:** 구매는 실제 개발 DB의 재화와 인벤토리를 변경합니다. 현재 웹 게임에는 로그인·권한 검사가 없으므로, 로컬 개발 환경에서만 실행하고 외부에 공개하지 않아야 합니다. `.env` 파일을 GitHub에 업로드하지 않습니다. 웹 화면이 실제로 표시되고 동작하는지는 로컬에서 추가 검증이 필요합니다.
 
@@ -201,7 +205,8 @@ Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세�
 | 5일 차 | Blocking·Deadlock 장애 재현 및 분석 | 완료 |
 | 6일 차 | FastAPI DB 연결 및 구매 API 실제 실행 | 완료 |
 | 7일 차 | RPG 웹 게임 화면 코드 작성·GitHub 반영 | 화면 실행 확인 |
-| 8일 차 | 사냥 Stored Procedure 및 웹 게임 사냥터 연결 | 로컬 사냥 검증 예정 |
+| 8일 차 | 모의 사냥 Stored Procedure 및 웹 게임 사냥터 연결 | 완료 |
+| 9일 차 | V003 서버 턴제 전투 및 승리 보상 보호 | 로컬 검증 예정 |
 
 ## 실습 범위와 한계
 
