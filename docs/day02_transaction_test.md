@@ -66,3 +66,10 @@
 ## 6. 다음 단계
 
 3일 차에서는 가상 사냥 기록 약 10만 건을 생성하고, 실행 계획 및 `SET STATISTICS IO`, `SET STATISTICS TIME`을 이용해 인덱스 적용 전후 성능을 비교했습니다. 결과는 [3일 차 보고서](day03_index_optimization.md)에 정리했습니다.
+
+## AI 활용 및 직접 수행 범위
+
+- **AI를 활용한 작업:** 조회·구매 Stored Procedure의 초기 SQL 코드 작성 및 트랜잭션 오류 처리 예시 정리
+- **직접 수행한 작업:** SSMS에서 프로시저 실행, 정상·실패 구매 테스트, 강제 오류에 따른 ROLLBACK 확인 및 결과 검증
+
+FastAPI 서버와 JavaScript `fetch()` 통신 코드는 후속 웹 게임 개발에서 **AI를 활용하여 구현**했으며, 해당 내용은 본 일차의 DB 프로시저 검증과 구분합니다.
