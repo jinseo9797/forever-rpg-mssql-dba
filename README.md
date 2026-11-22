@@ -34,7 +34,7 @@ Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고
 
 **Microsoft SQL Server · SSMS · T-SQL · Git · GitHub**
 
-게임 서버 연동 진행 중: Python(FastAPI), pyodbc (웹 클라이언트 구현 예정)
+게임 서버 연동 진행 중: Python(FastAPI), pyodbc (캐릭터 조회·인벤토리 조회·구매 API 구현, 웹 클라이언트 예정)
 
 실습 상세 내용과 SQL 실행 근거는 각 일차별 보고서 및 테스트 파일에서 확인할 수 있습니다.
 
