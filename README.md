@@ -48,6 +48,12 @@ Microsoft SQL Server로 RPG 게임의 데이터 테이블과 관계를 직접 �
 성능 확인: `SET STATISTICS IO`, `SET STATISTICS TIME`, 실제 실행 계획  
 동시성 제어: `UPDLOCK`, `HOLDLOCK`, `TRY/CATCH`, `XACT_STATE()`
 
+## 웹 게임 구현 화면
+
+![Forever RPG 로컬 웹 게임 실행 화면](screenshots/forever-web.png)
+
+**AI를 활용하여** FastAPI 서버와 JavaScript `fetch()` 통신, HTML/CSS 기반 게임 화면을 구현했습니다. 게임 화면을 로컬에서 실행해 SQL Server의 캐릭터·구매·전투 데이터 연동을 직접 확인했습니다. 데이터베이스 **테이블 구조는 직접 설계**했으며, **저장 프로시저 작성에는 AI의 도움**을 받았습니다.
+
 ## Forever RPG 웹 게임 실행 (로컬 개발 환경)
 
 `backend/`에서 FastAPI와 게임 화면을 함께 실행합니다. Windows에 Python 및 Microsoft ODBC Driver 18 for SQL Server가 필요합니다.
