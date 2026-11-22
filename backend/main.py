@@ -1,14 +1,22 @@
 import logging
 import re
+from pathlib import Path
 
 import pyodbc
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from db import db_cursor, rows_as_dict
 
 app = FastAPI(title="Forever RPG API", version="0.2.0")
 logger = logging.getLogger(__name__)
+
+
+@app.get("/", include_in_schema=False)
+def game_screen():
+    # FastAPI와 같은 출처에서 게임 화면 제공
+    return FileResponse(Path(__file__).resolve().parent / "index.html")
 
 # 구매 SP에서 명시적으로 발생시키는 비즈니스 오류
 PURCHASE_ERRORS = {
