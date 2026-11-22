@@ -34,17 +34,35 @@ Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고
 
 **Microsoft SQL Server · SSMS · T-SQL · Git · GitHub**
 
-향후 연동 예정: Python(FastAPI), HTML, CSS, JavaScript
+게임 서버 연동 진행 중: Python(FastAPI), pyodbc (웹 클라이언트 구현 예정)
 
 실습 상세 내용과 SQL 실행 근거는 각 일차별 보고서 및 테스트 파일에서 확인할 수 있습니다.
 
 성능 확인: `SET STATISTICS IO`, `SET STATISTICS TIME`, 실제 실행 계획  
 동시성 제어: `UPDLOCK`, `HOLDLOCK`, `TRY/CATCH`, `XACT_STATE()`
 
+## FastAPI 게임 서버 실행 (개발 환경)
+
+\`backend/\`에 SQL Server 연결 및 조회 API의 초기 코드를 추가했습니다. Windows에서 Python과 Microsoft ODBC Driver 18 for SQL Server를 설치하고 아래 명령을 실행합니다.
+
+```powershell
+cd backend
+py -m venv .venv
+.venv\\Scripts\\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+uvicorn main:app --reload
+```
+
+\`.env\`의 \`DB_SERVER\`를 SSMS에서 접속하는 SQL Server 이름에 맞게 수정하고, 사용 가능한 ODBC 드라이버도 확인합니다. Windows 인증을 사용하는 경우 FastAPI 실행 계정에 DB 연결 권한이 필요합니다. \`.env\`는 Git에 업로드하지 않습니다.
+
+첫 연결 테스트: \`http://127.0.0.1:8000/health\`, 캐릭터 조회: \`http://127.0.0.1:8000/characters/1\`, API 문서: \`http://127.0.0.1:8000/docs\`. 구매 API 및 웹 화면은 후속 단계에서 구현할 예정입니다.
+
 ## 프로젝트 구성
 
 ```text
 forever-rpg-mssql-dba/
+├── backend/                    # FastAPI 및 SQL Server 연결
 ├── database/
 │   ├── migrations/             # 최초 데이터베이스 스키마
 │   ├── procedures/             # 캐릭터·아이템 조회 및 구매 처리
