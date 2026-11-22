@@ -91,7 +91,7 @@ END CATCH;
 
 ## AI 활용 및 직접 수행 범위
 
-- **AI를 활용한 작업:** Python FastAPI·pyodbc API 구현, JavaScript `fetch()` 요청·응답 처리 및 RPG 웹 화면 코드 작성, V003 전투 테이블·전투 프로시저 SQL 초안 작성
-- **직접 수행한 작업:** SSMS에서 V003 및 프로시저 등록, 웹 게임에서 실제 전투 실행, `BattleEncounters` 조회, 종료된 전투 재공격과 골드·사냥 기록 유지 검증
+- **AI를 활용한 작업:** Python FastAPI·pyodbc API, JavaScript `fetch()` 통신, 웹 게임 화면 코드 구현 및 **전투·보상 Stored Procedure 작성 지원**. V003 테이블 설계의 SQL 구현·문서 정리에도 AI 활용
+- **직접 수행한 작업:** **전투 상태 테이블의 구조·관계 설계**, SSMS에서 V003 및 프로시저 등록, 웹 게임에서 실제 전투 실행, `BattleEncounters` 조회, 재공격 후 골드·사냥 기록 유지 검증
 
 **웹 화면 → FastAPI → SQL Server** 연동 코드는 AI를 활용해 구성했습니다. 반면 DB에 반영된 실제 승리·보상 결과와 재공격 검증은 사용자가 실행하여 확인했습니다. 순차 재공격과 동시 요청 검증은 구분하여 기록합니다.
