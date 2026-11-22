@@ -51,13 +51,13 @@ SSMS는 SQL Server를 관리하고 실습하는 도구이며 웹 요청의 직�
 
 V001에서 7개 테이블과 6개 외래키, 11개 CHECK, 3개 UNIQUE 제약조건을 대상으로 검증했습니다. V003 패치 후 `BattleEncounters` 테이블이 추가되었습니다.
 
-관련 문서: [Day 1](day01_database_design.md)
+관련 문서: [01단계](day01_database_design.md)
 
 ### 구매 트랜잭션
 
 정상 구매 시 골드 차감, 인벤토리 갱신, `PurchaseHistory` 기록을 확인했습니다. 오류 발생 시 데이터 변경이 되돌려지는지 확인했고, FastAPI `POST /purchase` 실행 결과 `200 OK` 및 실제 구매 금액 500 Gold를 확인했습니다. 이후 로컬 DB에서도 변경을 확인했습니다.
 
-관련 문서: [Day 2](day02_transaction_test.md)
+관련 문서: [02단계](day02_transaction_test.md)
 
 ### 인덱스 성능
 
@@ -70,13 +70,13 @@ V001에서 7개 테이블과 6개 외래키, 11개 CHECK, 3개 UNIQUE 제약조�
 
 힌트 없는 실제 실행 계획에서 Index Seek가 선택되는 것도 확인했습니다. 이 비교는 로컬 실습의 특정 쿼리·데이터 조건이며 실제 서비스 전체 성능 개선율을 의미하지 않습니다.
 
-관련 문서: [Day 3](day03_index_optimization.md)
+관련 문서: [03단계](day03_index_optimization.md)
 
 ### 패치·백업·복원
 
 V002 재실행 시 패치 이력이 중복 등록되지 않는 것을 확인했습니다. SQL Server 전체 백업과 별도 `ForeverRPG_RestoreTest` 데이터베이스 복원을 진행하고, 스키마·주요 객체 및 테이블별 행 수를 비교했습니다.
 
-관련 문서: [Day 4](day04_patch_backup_restore.md)
+관련 문서: [04단계](day04_patch_backup_restore.md)
 
 ### 장애 대응
 
@@ -99,7 +99,7 @@ V002 재실행 시 패치 이력이 중복 등록되지 않는 것을 확인했�
 
 종료된 전투에 다시 공격 요청을 보내고 골드와 사냥 기록 수가 유지되는 것을 확인했습니다. 이는 **순차적인 재요청 차단 검증**이며 동시 요청에 관한 보장은 아닙니다.
 
-관련 문서: [Day 9](day09_battle_validation.md)
+관련 문서: [09단계](day09_battle_validation.md)
 
 ## 5. AI 활용 및 직접 수행 범위
 
