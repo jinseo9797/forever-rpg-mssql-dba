@@ -1,10 +1,12 @@
 USE ForeverRPG;
 GO
 
--- 몬스터 사냥 보상 지급 및 이력 기록
+-- 서버에서 검증된 승리 전투에 한해 보상 지급
+-- 기존 무조건 보상 방식 대신 BattleId를 필수로 확인
 CREATE OR ALTER PROCEDURE dbo.usp_HuntMonster
     @CharacterId INT,
-    @MonsterId INT
+    @MonsterId INT,
+    @BattleId BIGINT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -13,76 +15,65 @@ BEGIN
     DECLARE @CurrentGold INT;
     DECLARE @RewardGold INT;
     DECLARE @MonsterName NVARCHAR(100);
-    DECLARE @IsActive BIT;
     DECLARE @HuntId BIGINT;
 
     BEGIN TRY
-        -- 입력값 확인
-        IF @CharacterId IS NULL OR @CharacterId <= 0
-           OR @MonsterId IS NULL OR @MonsterId <= 0
-            THROW 50101, N'캐릭터와 몬스터 ID는 1 이상이어야 합니다.', 1;
+        IF @BattleId IS NULL
+            THROW 50107, N'승리한 전투 ID가 필요합니다.', 1;
 
         BEGIN TRAN;
 
-        -- 골드 변경 대상 잠금
-        SELECT @CurrentGold = Gold
-        FROM dbo.Characters WITH (UPDLOCK, HOLDLOCK)
-        WHERE CharacterId = @CharacterId;
+        -- 같은 전투를 두 번 보상하지 못하도록 잠금
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.BattleEncounters WITH (UPDLOCK,HOLDLOCK)
+            WHERE BattleId=@BattleId
+              AND CharacterId=@CharacterId
+              AND MonsterId=@MonsterId
+              AND Status='Won'
+              AND RewardClaimed=0
+        )
+            THROW 50108, N'승리 전투가 아니거나 보상이 이미 지급됐습니다.', 1;
+
+        SELECT @CurrentGold=Gold
+        FROM dbo.Characters WITH(UPDLOCK,HOLDLOCK)
+        WHERE CharacterId=@CharacterId;
 
         IF @CurrentGold IS NULL
             THROW 50102, N'존재하지 않는 캐릭터입니다.', 1;
 
-        -- 몬스터 보상 및 활성 상태 확인
-        SELECT
-            @RewardGold = RewardGold,
-            @MonsterName = MonsterName,
-            @IsActive = IsActive
-        FROM dbo.Monsters WITH (HOLDLOCK)
-        WHERE MonsterId = @MonsterId;
+        SELECT @RewardGold=RewardGold, @MonsterName=MonsterName
+        FROM dbo.Monsters WITH(HOLDLOCK)
+        WHERE MonsterId=@MonsterId;
 
-        IF @RewardGold IS NULL OR @IsActive <> 1 OR @IsActive IS NULL
-            THROW 50103, N'사냥할 수 없는 몬스터입니다.', 1;
-
-        IF @RewardGold < 0
+        IF @RewardGold IS NULL OR @RewardGold<0
             THROW 50104, N'몬스터 보상 설정이 올바르지 않습니다.', 1;
 
-        -- INT 골드 최대값 초과 방지
-        IF @CurrentGold > 2147483647 - @RewardGold
+        IF @CurrentGold > 2147483647-@RewardGold
             THROW 50105, N'보유 골드 최대치를 초과합니다.', 1;
 
-        -- 골드 증가
         UPDATE dbo.Characters
-        SET Gold = Gold + @RewardGold
-        WHERE CharacterId = @CharacterId;
+        SET Gold=Gold+@RewardGold
+        WHERE CharacterId=@CharacterId;
 
-        IF @@ROWCOUNT <> 1
-            THROW 50106, N'골드 지급에 실패했습니다.', 1;
+        INSERT dbo.HuntHistory(CharacterId,MonsterId,EarnedGold)
+        VALUES(@CharacterId,@MonsterId,@RewardGold);
 
-        -- 사냥 이력 생성
-        INSERT INTO dbo.HuntHistory (
-            CharacterId, MonsterId, EarnedGold
-        )
-        VALUES (
-            @CharacterId, @MonsterId, @RewardGold
-        );
+        SET @HuntId=CONVERT(BIGINT,SCOPE_IDENTITY());
 
-        SET @HuntId = CAST(SCOPE_IDENTITY() AS BIGINT);
+        UPDATE dbo.BattleEncounters
+        SET RewardClaimed=1, UpdatedAt=SYSDATETIME()
+        WHERE BattleId=@BattleId AND RewardClaimed=0;
+
+        IF @@ROWCOUNT<>1
+            THROW 50109, N'보상 처리 상태 갱신에 실패했습니다.', 1;
 
         COMMIT TRAN;
 
-        SELECT
-            @HuntId AS HuntId,
-            @CharacterId AS CharacterId,
-            @MonsterId AS MonsterId,
-            @MonsterName AS MonsterName,
-            @RewardGold AS EarnedGold,
-            @CurrentGold + @RewardGold AS CurrentGold,
-            N'사냥 성공' AS ResultMessage;
+        -- 다른 프로시저 내부에서도 호출되므로 결과 집합은 반환하지 않음
     END TRY
     BEGIN CATCH
-        IF XACT_STATE() <> 0
-            ROLLBACK TRAN;
-
+        IF XACT_STATE()<>0 ROLLBACK TRAN;
         THROW;
     END CATCH;
 END;
