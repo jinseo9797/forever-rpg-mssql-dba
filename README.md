@@ -63,8 +63,13 @@ uvicorn main:app --reload
 - 상점 조회: `GET /items`
 - 인벤토리 조회: `GET /characters/{character_id}/inventory`
 - 구매 처리: `POST /purchase` → `dbo.usp_PurchaseItem`
+- 활성 몬스터: `GET /monsters`
+- 최근 사냥 기록: `GET /characters/{character_id}/hunts`
+- 사냥 보상 처리: `POST /hunt` → `dbo.usp_HuntMonster`
 
 상점에서 구매하면 SQL Server의 기존 저장 프로시저가 골드 차감, 인벤토리 지급, 구매 이력을 트랜잭션으로 처리합니다. 화면은 이후 캐릭터와 인벤토리 정보를 다시 조회합니다.
+
+사냥터에서는 활성 몬스터 목록과 최근 20건의 사냥 기록을 조회하고, 사냥 버튼으로 `POST /hunt` API가 `dbo.usp_HuntMonster`를 호출합니다. **사냥 기능은 별도 전투 승패 판정 없이 보상 골드와 HuntHistory를 기록하는 모의 사냥**이며, 실제 실행 전 SSMS에 [usp_HuntMonster.sql](database/procedures/usp_HuntMonster.sql)을 등록해야 합니다. [사냥 검증 SQL](database/tests/06_hunt_validation.sql)도 함께 확인하세요.
 
 **주의:** 구매는 실제 개발 DB의 재화와 인벤토리를 변경합니다. 현재 웹 게임에는 로그인·권한 검사가 없으므로, 로컬 개발 환경에서만 실행하고 외부에 공개하지 않아야 합니다. `.env` 파일을 GitHub에 업로드하지 않습니다. 웹 화면이 실제로 표시되고 동작하는지는 로컬에서 추가 검증이 필요합니다.
 
@@ -195,7 +200,8 @@ Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세�
 | 4일 차 | DB 패치 버전 관리, 백업 및 복원 | 완료 |
 | 5일 차 | Blocking·Deadlock 장애 재현 및 분석 | 완료 |
 | 6일 차 | FastAPI DB 연결 및 구매 API 실제 실행 | 완료 |
-| 7일 차 | RPG 웹 게임 화면 코드 작성·GitHub 반영 | 로컬 검증 예정 |
+| 7일 차 | RPG 웹 게임 화면 코드 작성·GitHub 반영 | 화면 실행 확인 |
+| 8일 차 | 사냥 Stored Procedure 및 웹 게임 사냥터 연결 | 로컬 사냥 검증 예정 |
 
 ## 실습 범위와 한계
 
