@@ -16,6 +16,7 @@ Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고
 | DB 패치·복원 | V002 패치 재실행 검증, FULL 백업 및 별도 DB 복원 확인 |
 | 장애 대응 | Blocking 재현 및 DMV 분석, 세션 92 → 78 대기(9,724ms), 해소 확인 |
 | 교착 상태 분석 | 오류 1205 재현, Deadlock XML 분석, 희생자 SPID 75 및 키 잠금 순환 대기 확인 |
+| 게임 전투 검증 | BattleId 1 승리(Won), 보상 완료 표시, 재공격 후 골드·사냥 기록 유지 |
 
 > 성능 수치는 로컬 실습에서 얻은 결과입니다. 449와 3은 각각 강제 스캔과 복합 인덱스를 사용한 5회 측정의 평균이며, 실제 서비스 환경의 개선율을 의미하지 않습니다.
 
@@ -29,12 +30,13 @@ Microsoft SQL Server를 활용해 RPG 게임의 데이터 구조를 설계하고
 | [04. DB 패치 및 백업·복원 검증](docs/day04_patch_backup_restore.md) | V002 패치, 복원 이력, 원본·복원본 검증 |
 | [05. Blocking 장애 재현 및 대응](docs/day05_blocking_troubleshooting.md) | 세션 간 잠금 대기, DMV 원인 분석, ROLLBACK 및 해소 검증 |
 | [05. Deadlock 재현 및 XML 분석](docs/day05_deadlock_analysis.md) | 오류 1205, 희생자 선정, PK 키 잠금 순환 대기 검증 |
+| [09. 전투 및 중복 보상 검증](docs/day09_battle_validation.md) | 전투 승리, 보상 완료 상태, 재공격 후 데이터 유지 |
 
 ## 사용 기술
 
 **Microsoft SQL Server · SSMS · T-SQL · Git · GitHub**
 
-게임 서버 및 로컬 웹 게임 구현: Python(FastAPI), pyodbc, HTML/CSS/JavaScript. 턴제 전투(V003)는 로컬 검증 예정
+게임 서버 및 로컬 웹 게임 구현: Python(FastAPI), pyodbc, HTML/CSS/JavaScript. V003 전투 승리 및 순차 재공격 검증 완료
 
 실습 상세 내용과 SQL 실행 근거는 각 일차별 보고서 및 테스트 파일에서 확인할 수 있습니다.
 
@@ -194,6 +196,22 @@ GO
 
 Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세션 87과 75가 서로 보유자·대기자로 나타나는 것을 확인했습니다. 개인 환경 식별 정보가 포함된 XML 원본 대신 [분석 보고서](docs/day05_deadlock_analysis.md)에 핵심 결과를 정리했습니다.
 
+### 턴제 전투 및 중복 보상 검증
+
+**전투 승리 — BattleId 1 / Won / RewardClaimed 1**
+
+![Day 9 전투 승리 결과](screenshots/day09_battle_victory.png)
+
+**종료된 전투에 대한 재공격 차단**
+
+![Day 9 재공격 오류 결과](screenshots/day09_duplicate_reward_error.png)
+
+**재공격 이후 골드 및 사냥 기록 유지**
+
+![Day 9 보상 중복 발생 여부 검증](screenshots/day09_reward_validation.png)
+
+자세한 검증 조건과 결과는 [9일 차 전투 검증 보고서](docs/day09_battle_validation.md)에 정리했습니다. 순차 재공격은 검증했지만 동시 요청의 중복 지급 방지는 아직 부하 테스트로 검증하지 않았습니다.
+
 ## 진행 현황 및 다음 작업
 
 | 단계 | 내용 | 상태 |
@@ -206,7 +224,8 @@ Deadlock Graph의 원본 XML에서 기본 키의 두 `KEY` 잠금에 대해 세�
 | 6일 차 | FastAPI DB 연결 및 구매 API 실제 실행 | 완료 |
 | 7일 차 | RPG 웹 게임 화면 코드 작성·GitHub 반영 | 화면 실행 확인 |
 | 8일 차 | 모의 사냥 Stored Procedure 및 웹 게임 사냥터 연결 | 완료 |
-| 9일 차 | V003 서버 턴제 전투 및 승리 보상 보호 | 로컬 검증 예정 |
+| 9일 차 | V003 턴제 전투 및 순차 재공격 검증 | 완료 |
+| 다음 단계 | 게임 전체 통합 테스트 및 최종 문서화 | 예정 |
 
 ## 실습 범위와 한계
 
